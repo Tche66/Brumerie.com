@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MOBILE_PAYMENT_METHODS, PaymentInfo } from '@/types';
 import { updateUserProfile } from '@/services/userService';
 import { PaymentLogo } from '@/components/PaymentLogo';
+import { GuideButton } from '@/components/OnboardingGuide';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -264,6 +265,7 @@ export function SettingsPage({ onBack, onNavigate, role = 'seller' }: SettingsPa
           <SettingItem icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
             label="Support & Aide" sublabel="Comment publier · Ajouter une photo de profil"
             onClick={() => onNavigate('support')}/>
+          <GuideButton page="home" userId={currentUser?.uid} asSettingItem />
         </SettingSection>
 
         {/* Déconnexion */}

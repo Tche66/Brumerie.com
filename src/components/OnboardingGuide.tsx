@@ -172,28 +172,43 @@ export function OnboardingGuide({ page, userId, forceOpen = false, onClose }: On
   );
 }
 
-// ── Bouton flottant '?' pour relancer le guide ─────────────────
+// ── Bouton Guide — mode SettingItem dans les paramètres ────────
 interface GuideButtonProps {
   page: string;
   userId?: string;
+  asSettingItem?: boolean;
 }
 
-export function GuideButton({ page, userId }: GuideButtonProps) {
+export function GuideButton({ page, userId, asSettingItem = false }: GuideButtonProps) {
   const [open, setOpen] = useState(false);
+
+  const handleOpen = () => setOpen(true);
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-[900] w-11 h-11 rounded-full flex items-center justify-center font-black text-base text-white shadow-xl transition-all active:scale-90"
-        style={{
-          background: 'linear-gradient(135deg, #16A34A, #0f5c2e)',
-          boxShadow: '0 4px 20px rgba(22,163,74,0.45)',
-        }}
-        title="Aide / Guide"
-      >
-        ?
-      </button>
+      {asSettingItem ? (
+        // Rendu comme un item de paramètres (dans SettingsPage)
+        <button
+          onClick={handleOpen}
+          className="w-full flex items-center gap-4 px-6 py-5 hover:bg-slate-50 active:bg-slate-100 transition-all text-left group"
+        >
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-slate-50 bg-green-50 transition-transform group-active:scale-90">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold tracking-tight text-slate-900">Guide de l'application</p>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-tight">Revoir le tutoriel de démarrage</p>
+          </div>
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" className="text-slate-200">
+            <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      ) : null}
+
       {open && (
         <OnboardingGuide
           page={page}

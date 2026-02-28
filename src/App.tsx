@@ -270,12 +270,7 @@ function AppShell() {
             onNotificationsClick={() => navigate('notifications')}
           />
         )}
-        {activePage === 'home' && (
-          <>
-            <OnboardingGuide page="home" userId={currentUser?.uid} />
-            <GuideButton page="home" userId={currentUser?.uid} />
-          </>
-        )}
+        {activePage === 'home' && <OnboardingGuide page="home" userId={currentUser?.uid} />}
         {activePage === 'product-detail' && selectedProduct && (
           <ProductDetailPage
             product={selectedProduct} onBack={goBack}
@@ -294,12 +289,7 @@ function AppShell() {
         {activePage === 'profile' && !isBuyer && (
           <ProfilePage onProductClick={handleProductClick} onNavigate={handleNavigate} />
         )}
-        {activePage === 'profile' && (
-          <>
-            <OnboardingGuide page="profile" userId={currentUser?.uid} />
-            <GuideButton page="profile" userId={currentUser?.uid} />
-          </>
-        )}
+        {activePage === 'profile' && <OnboardingGuide page="profile" userId={currentUser?.uid} />}
         {activePage === 'messages' && (
           <ConversationsListPage onOpenConversation={handleOpenConversation} />
         )}
@@ -346,12 +336,7 @@ function AppShell() {
         {activePage === 'sell' && !isBuyer && (
           <SellPage onClose={() => handleBottomNavNavigate('home')} onSuccess={() => handleBottomNavNavigate('home')} />
         )}
-        {activePage === 'sell' && !isBuyer && (
-          <>
-            <OnboardingGuide page="sell" userId={currentUser?.uid} />
-            <GuideButton page="sell" userId={currentUser?.uid} />
-          </>
-        )}
+        {activePage === 'sell' && !isBuyer && <OnboardingGuide page="sell" userId={currentUser?.uid} />}
         {activePage === 'notifications' && (
           <NotificationsPage
             onBack={goBack}

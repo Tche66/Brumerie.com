@@ -47,8 +47,6 @@ export function HomePage({ onProductClick, onProfileClick, onNotificationsClick,
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState('all');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -199,9 +197,9 @@ export function HomePage({ onProductClick, onProfileClick, onNotificationsClick,
         </div>
         <div className="flex gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide">
           {ALL_CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat.id;
+            const isActive = filters.category === cat.id;
             return (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+              <button key={cat.id} onClick={() => setFilters(f => ({ ...f, category: cat.id }))}
                 className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-lg -translate-y-0.5' : 'bg-slate-50 text-slate-500'}`}>
                 {cat.icon && <span>{cat.icon}</span>}
                 <span className="uppercase tracking-wider">{cat.label}</span>
@@ -215,21 +213,21 @@ export function HomePage({ onProductClick, onProfileClick, onNotificationsClick,
       <div className="mt-2">
         <div className="flex items-center justify-between px-6 mb-3">
           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">À proximité</h3>
-          {selectedNeighborhood !== 'all' && (
-            <button onClick={() => setSelectedNeighborhood('all')} className="text-[9px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
+          {filters.neighborhood !== 'all' && (
+            <button onClick={() => setFilters(f => ({ ...f, neighborhood: 'all' }))} className="text-[9px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
               Effacer
             </button>
           )}
         </div>
         <div className="flex gap-2 overflow-x-auto px-5 pb-3 scrollbar-hide">
-          <button onClick={() => setSelectedNeighborhood('all')}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border-2 transition-all ${selectedNeighborhood === 'all' ? 'border-green-600 bg-green-50 text-green-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
+          <button onClick={() => setFilters(f => ({ ...f, neighborhood: 'all' }))}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border-2 transition-all ${filters.neighborhood === 'all' ? 'border-green-600 bg-green-50 text-green-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 00-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 00-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
             Tout Abidjan
           </button>
           {NEIGHBORHOODS.map((n) => (
-            <button key={n} onClick={() => setSelectedNeighborhood(n)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border-2 transition-all ${selectedNeighborhood === n ? 'border-green-600 bg-green-50 text-green-700 shadow-md' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
+            <button key={n} onClick={() => setFilters(f => ({ ...f, neighborhood: n }))}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border-2 transition-all ${filters.neighborhood === n ? 'border-green-600 bg-green-50 text-green-700 shadow-md' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
               <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 00-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 00-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
               {n}
             </button>
