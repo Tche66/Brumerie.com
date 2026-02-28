@@ -82,10 +82,14 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
       }
       setTimeout(() => refs.current[0]?.focus(), 300);
     } catch (err: any) {
-      if (err.message?.includes('trop de tentatives') || err.message?.includes('429')) {
+      if (err.message?.includes('Trop de tentatives') || err.message?.includes('429')) {
         setError('Trop de tentatives. Attends 10 minutes.');
+      } else if (err.message?.includes('sender') || err.message?.includes('Sender')) {
+        setError('Problème de configuration email. Contacte le support Brumerie.');
+      } else if (err.message?.includes('invalide') || err.message?.includes('401')) {
+        setError('Service email temporairement indisponible. Réessaie dans quelques minutes.');
       } else {
-        setError('Impossible d\'envoyer le code. Vérifie ton email et réessaie.');
+        setError('Impossible d\'envoyer le code. Vérifie ton adresse email et réessaie.');
       }
     } finally { setLoading(false); }
   };

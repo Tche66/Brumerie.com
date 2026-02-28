@@ -136,7 +136,7 @@ exports.handler = async (event) => {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender:      { name: "Brumerie", email: 'contact.brumerie@gmail.com' },
+          sender:      { name: "Brumerie", email: process.env.BREVO_SENDER_EMAIL || 'no-reply@brumerie.com' },
           to:          [{ email, name }],
           subject:     `${code} — Ton code de vérification Brumerie`,
           htmlContent,
@@ -150,7 +150,7 @@ exports.handler = async (event) => {
         const brevoError = data.message || data.error || JSON.stringify(data);
         console.error(`[OTP] Brevo a refusé l'envoi vers ${email}`);
         console.error(`[OTP] Status: ${res.status} | Erreur: ${brevoError}`);
-        console.error(`[OTP] Sender: contact.brumerie@gmail.com`);
+        console.error(`[OTP] Sender: ${process.env.BREVO_SENDER_EMAIL || 'non configuré'}`);
         console.error(`[OTP] Clé API (premiers chars): ${apiKey.substring(0, 12)}...`);
 
         // Diagnostic de la cause probable
@@ -237,7 +237,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({
-        sender: { name: "Brumerie", email: 'contact.brumerie@gmail.com' },
+        sender: { name: "Brumerie", email: process.env.BREVO_SENDER_EMAIL || 'no-reply@brumerie.com' },
         to: [{ email, name: name || email }],
         subject: `Bienvenue sur Brumerie, ${name || ''} 🎉`,
         htmlContent: htmlWelcome,
