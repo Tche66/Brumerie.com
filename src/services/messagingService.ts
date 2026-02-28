@@ -9,6 +9,7 @@ import { PLAN_LIMITS } from '@/types';
 import { Conversation, Message } from '@/types';
 import { createNotification } from './notificationService';
 import { showLocalPushNotification } from './pushService';
+import { incrementContactCount } from './productService';
 
 const convsCol = collection(db, 'conversations');
 
@@ -306,6 +307,11 @@ export async function sendOfferCard(
   });
 
   await batch.commit();
+
+  // Comptabiliser comme un contact (pour les stats du vendeur)
+  try {
+    await incrementContactCount(product.id, product.sellerId);
+  } catch(e) { console.error('[sendOfferCard] incrementContactCount:', e); }
 }
 
 // ── Vendeur répond à une offre (accepter / refuser) ────────

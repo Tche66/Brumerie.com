@@ -219,7 +219,7 @@ export function ProfilePage({ onProductClick, onNavigate }: ProfilePageProps) {
         </button>
         <button onClick={() => setActiveTab('sold')}
           className={`flex-1 py-3.5 rounded-2xl text-[9px] font-bold uppercase tracking-widest transition-all ${activeTab === 'sold' ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>
-          Succès ({soldProducts.length})
+          Marqur vendu ({soldProducts.length})
         </button>
         <button onClick={() => setActiveTab('bookmarks')}
           className={`flex-1 py-3.5 rounded-2xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1 ${activeTab === 'bookmarks' ? 'text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}

@@ -177,7 +177,7 @@ export function HomePage({ onProductClick, onProfileClick, onNotificationsClick,
                 </span>
               </div>
               <h2 className="text-white font-black leading-tight tracking-tight" style={{ fontSize: '2rem' }}>
-                Trouve ton bonheur.
+                Trouve ton bonheur à Babi 🤩
               </h2>
               <p className="text-green-50 text-[11px] font-bold mt-3 uppercase tracking-[0.1em] opacity-80">
                 {products.length} pépites dénichées

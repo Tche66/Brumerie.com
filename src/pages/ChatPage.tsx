@@ -288,8 +288,8 @@ export function ChatPage({ conversation, onBack, onProductClick, onBuyAtPrice }:
                           {msg.offerStatus === 'refused' && <p className="text-[10px] font-black text-red-600">❌ Offre refusée</p>}
                           {msg.offerStatus === 'pending' && <p className="text-[10px] font-bold text-amber-700">⏳ En attente de réponse...</p>}
                         </div>
-                        {/* Bouton acheteur "Acheter à ce prix" si accepté */}
-                        {msg.offerStatus === 'accepted' && !isMe && (
+                        {/* Bouton "Acheter à ce prix" — uniquement pour l'ACHETEUR (celui qui a fait l'offre) si acceptée */}
+                        {msg.offerStatus === 'accepted' && msg.senderId === currentUser?.uid && (
                           <div className="px-3 pb-3">
                             <button
                               onClick={() => onBuyAtPrice?.(msg.productRef, msg.offerPrice!)}
@@ -300,8 +300,8 @@ export function ChatPage({ conversation, onBack, onProductClick, onBuyAtPrice }:
                             </button>
                           </div>
                         )}
-                        {/* Boutons vendeur accepter/refuser */}
-                        {msg.offerStatus === 'pending' && isSeller && (
+                        {/* Boutons Accepter/Refuser — uniquement pour le VENDEUR (celui qui n'a PAS envoyé l'offre) */}
+                        {msg.offerStatus === 'pending' && msg.senderId !== currentUser?.uid && (
                           <div className="px-3 pb-3 flex gap-2">
                             <button
                               onClick={() => handleRespondOffer(msg.id, 'refused')}
@@ -341,8 +341,8 @@ export function ChatPage({ conversation, onBack, onProductClick, onBuyAtPrice }:
                             </div>
                           </div>
                         </div>
-                        {/* Bouton acheter au prix proposé */}
-                        {!isMe && (
+                        {/* Bouton acheter — uniquement pour l'ACHETEUR (pas celui qui a envoyé le prix perso) */}
+                        {msg.senderId !== currentUser?.uid && (
                           <div className="px-3 pb-3">
                             <button
                               onClick={() => onBuyAtPrice?.(msg.productRef, msg.sellerCustomPrice!)}

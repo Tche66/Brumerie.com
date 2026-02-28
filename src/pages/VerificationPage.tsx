@@ -68,7 +68,7 @@ export function VerificationPage({ onBack }: VerificationPageProps) {
 
           <div className="mt-6 bg-slate-100 rounded-2xl py-4 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              {tier === 'simple' ? '— PLAN ACTUEL —' : 'Plan de base'}
+              {tier === 'simple' ? '— Gratuit —' : 'Plan de base'}
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function VerificationPage({ onBack }: VerificationPageProps) {
           {/* Badge recommandé */}
           <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
             <div className="bg-amber-400 text-slate-900 text-[10px] font-black uppercase tracking-widest px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-              🔥 RECOMMANDÉ POUR LE MVP
+              🔥 RECOMMANDÉ POUR VOUS !
             </div>
           </div>
 
@@ -141,7 +141,7 @@ export function VerificationPage({ onBack }: VerificationPageProps) {
           </div>
         </div>
 
-        {/* ── CARTE PREMIUM ── */}
+        {/* ── 🏅CARTE PREMIUM ── */}
         <div className="rounded-3xl p-6 pb-8" style={{ background: '#0F0F0F' }}>
           <p className="font-black uppercase tracking-widest mb-2" style={{ color: '#F59E0B' }}>Premium</p>
           <p className="text-5xl font-black text-white mb-1">Bientôt</p>

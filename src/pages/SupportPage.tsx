@@ -85,7 +85,7 @@ export function SupportPage({ onBack }: SupportPageProps) {
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Questions fréquentes</p>
           <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-xl shadow-slate-200/50 divide-y divide-slate-50">
             {[
-              { q: 'Comment contacter un vendeur ?', a: "Clique sur l'article puis sur le bouton vert WhatsApp. Tu discuteras en direct avec lui." },
+              { q: 'Comment contacter un vendeur ?', a: "Clique sur l'article puis sur le bouton discuter. Tu discuteras en direct avec lui." },
               { q: 'Comment publier un article ?', a: "Appuie sur le bouton (+) en bas de l'écran. Ajoute tes photos, le titre, le prix et ton quartier. C'est gratuit ! ⚠️ Si tu as des difficultés à publier, assure-toi d'avoir une photo de profil — c'est obligatoire pour éviter les faux profils et renforcer la confiance. Tu peux l'ajouter dans Paramètres → Modifier mon profil." },
               { q: 'Badge Vendeur Vérifié ?', a: "C'est un badge qui indique que Brumerie a contrôlé ton identité. Il ne garantit pas la qualité des produits ni le déroulement des transactions. Demande-le dans tes paramètres pour 2 000 FCFA." },
               { q: 'Supprimer une annonce ?', a: "Va sur ton profil, clique sur ton annonce, et utilise les options de gestion." },

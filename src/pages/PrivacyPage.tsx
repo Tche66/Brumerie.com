@@ -311,7 +311,7 @@ function TabAbout({ onBack }: { onBack: () => void }) {
         <div className="text-center">
           <p className="text-6xl mb-4">🛍️</p>
           <h2 className="font-black text-3xl text-slate-900 uppercase tracking-tight">BRUMERIE</h2>
-          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">Mise en relation locale · 🇨🇮 Abidjan</p>
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">Mise en relation locale ·  Abidjan</p>
         </div>
         <div className="bg-slate-50 rounded-3xl p-5 space-y-3">
           <p className="text-[12px] text-slate-600 leading-relaxed">Brumerie est une plateforme numérique de mise en relation C2C permettant aux habitants d'Abidjan de publier, découvrir et échanger des biens localement.</p>
@@ -319,9 +319,9 @@ function TabAbout({ onBack }: { onBack: () => void }) {
         </div>
         <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
           {[
-            { label: 'Version', value: 'MVP 1.0' },
+            { label: 'Version', value: 'MVP 1.6' },
             { label: 'Date', value: DATE },
-            { label: 'Marché', value: '🇨🇮 Abidjan, Côte d\'Ivoire' },
+            { label: 'Marché', value: ' Abidjan, Côte d\'Ivoire' },
             { label: 'Contact', value: SUPPORT_EMAIL },
           ].map((row, i, arr) => (
             <div key={i} className={`flex items-center justify-between px-5 py-4 ${i < arr.length - 1 ? 'border-b border-slate-100' : ''}`}>

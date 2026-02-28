@@ -250,7 +250,7 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
 
         {scale === 1 && product.images.length > 0 && (
           <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full">
-            <p className="text-[9px] text-white font-bold">Tap pour agrandir · Pincer pour zoomer</p>
+            <p className="text-[9px] text-white font-bold">Tap pour agrandir & zoomer</p>
           </div>
         )}
 
@@ -356,7 +356,7 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
             <p className="text-xl font-black text-slate-900">
               {liveContactCount === -1 ? '…' : liveContactCount}
             </p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Contacts</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-0.5">intéressés</p>
           </div>
           <div className="bg-white rounded-2xl p-4 text-center border border-slate-100 shadow-sm">
             <p className="text-xl font-black text-slate-900">
@@ -401,7 +401,7 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
                 <span className="text-[9px] text-slate-400 font-bold">{avgRating.toFixed(1)} ({reviewCount} avis)</span>
               </div>
             )}
-            <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest">Voir la boutique →</p>
+            <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest">Voir le vendeur →</p>
           </div>
         </button>
 
