@@ -8,14 +8,14 @@ import { getProducts, incrementViewCount, incrementContactCount } from '@/servic
 import { addBookmark, removeBookmark } from '@/services/bookmarkService';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImageLightbox } from '@/components/ImageLightbox';
-import { getOrCreateConversation, checkChatLimit } from '@/services/messagingService';
+import { getOrCreateConversation, checkChatLimit, sendOfferCard } from '@/services/messagingService';
 import { subscribeSellerReviews } from '@/services/reviewService';
 import { Review } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { shareProduct } from '@/utils/shareProduct';
-import { OfferModal } from '@/components/OfferModal';
+
 
 interface ProductDetailPageProps {
   product: Product;
@@ -33,9 +33,12 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerInput, setOfferInput] = useState('');
+  const [sendingOffer, setSendingOffer] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
-  const [showOffer, setShowOffer] = useState(false);
+
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [scale, setScale] = useState(1);
   const [lastDist, setLastDist] = useState<number | null>(null);
@@ -179,26 +182,35 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
     } catch {}
   };
 
-  const handleSendOffer = async (offerPrice: number, message: string) => {
-    if (!currentUser || !userProfile) return;
-    if (currentUser.uid === product.sellerId) return;
-    // Créer ou récupérer la conversation
-    const { getOrCreateConversation, sendMessage } = await import('@/services/messagingService');
-    const convId = await getOrCreateConversation(
-      currentUser.uid, product.sellerId,
-      { id: product.id, title: product.title, price: product.price, image: product.images?.[0] || '', neighborhood: product.neighborhood },
-      userProfile.name, product.sellerName, userProfile.photoURL, product.sellerPhoto,
-    );
-    // Formater le message offre
-    const offerText = [
-      '💰 *OFFRE DE PRIX*',
-      `Article : ${product.title}`,
-      `Prix demandé : ${product.price.toLocaleString('fr-FR')} FCFA`,
-      `Ma proposition : *${offerPrice.toLocaleString('fr-FR')} FCFA*`,
-      message ? `Message : "${message}"` : '',
-    ].filter(Boolean).join('\n');
-    await sendMessage(convId, currentUser.uid, offerText, userProfile.name, userProfile.photoURL);
-    onStartChat?.(convId);
+
+
+  const handleSendOffer = async () => {
+    if (!currentUser || !userProfile || !offerInput.trim()) return;
+    const offerPrice = parseInt(offerInput.replace(/\D/g, ''), 10);
+    if (!offerPrice || offerPrice <= 0) return;
+    setSendingOffer(true);
+    try {
+      const convId = await getOrCreateConversation(
+        currentUser.uid, product.sellerId,
+        { id: product.id, title: product.title, price: product.price, image: product.images?.[0] || '', neighborhood: product.neighborhood },
+        userProfile.name, product.sellerName, userProfile.photoURL, product.sellerPhoto,
+      );
+      await sendOfferCard(
+        convId, currentUser.uid, userProfile.name,
+        {
+          id: product.id, title: product.title, price: product.price,
+          image: product.images?.[0] || '', sellerId: product.sellerId,
+          neighborhood: product.neighborhood,
+          sellerName: product.sellerName, sellerPhoto: product.sellerPhoto,
+        },
+        offerPrice,
+        userProfile.photoURL,
+      );
+      setShowOfferModal(false);
+      setOfferInput('');
+      onStartChat?.(convId);
+    } catch (e) { console.error(e); }
+    finally { setSendingOffer(false); }
   };
 
   const handleReport = async () => {
@@ -494,11 +506,11 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
                 : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Discuter</>
               }
             </button>
-            {/* Bouton Faire une offre */}
+
             {!isGuest && currentUser?.uid !== product.sellerId && product.status !== 'sold' && (
-              <button onClick={() => { if (isGuest) { onGuestAction?.('offer'); return; } setShowOffer(true); }}
+              <button onClick={() => setShowOfferModal(true)}
                 className="flex-1 py-5 rounded-[2rem] font-black text-[12px] uppercase tracking-widest border-2 border-slate-200 text-slate-700 bg-white active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                💰 Faire une offre
+                💰 Offre
               </button>
             )}
             <button onClick={() => { if (isGuest) { onGuestAction?.('contact'); return; } onBuyClick?.(product); }}
@@ -554,13 +566,64 @@ export function ProductDetailPage({ product, onBack, onSellerClick, onStartChat,
         <ImageLightbox images={product.images} initialIndex={lightboxIndex} onClose={() => setLightboxOpen(false)}/>
       )}
 
-      {/* Modal offre de prix */}
-      <OfferModal
-        product={product}
-        visible={showOffer}
-        onClose={() => setShowOffer(false)}
-        onSend={handleSendOffer}
-      />
+      {/* ── MODAL FAIRE UNE OFFRE ── */}
+      {showOfferModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[300] flex items-end justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-8">
+            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6"/>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0">
+                <img src={product.images?.[0]} alt="" className="w-full h-full object-cover"/>
+              </div>
+              <div>
+                <p className="font-black text-slate-900 text-sm truncate">{product.title}</p>
+                <p className="text-green-600 font-black">{product.price.toLocaleString('fr-FR')} FCFA</p>
+                <p className="text-[10px] text-slate-400 font-bold">Prix demandé par le vendeur</p>
+              </div>
+            </div>
+            <p className="font-black text-slate-900 text-lg uppercase tracking-tight mb-1">Faire une offre</p>
+            <p className="text-slate-400 text-[11px] mb-5">Proposez votre prix — le vendeur pourra accepter ou refuser.</p>
+            <div className="relative mb-5">
+              <input
+                type="number"
+                value={offerInput}
+                onChange={e => setOfferInput(e.target.value)}
+                placeholder={`Ex: ${Math.round(product.price * 0.85).toLocaleString('fr-FR')}`}
+                className="w-full bg-slate-50 rounded-2xl px-5 py-4 text-[18px] font-black border-2 border-transparent focus:border-green-400 focus:bg-white outline-none transition-all"
+              />
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">FCFA</span>
+            </div>
+            {offerInput && parseInt(offerInput) > 0 && (
+              <div className={`text-[11px] font-bold mb-4 px-3 py-2 rounded-xl ${
+                parseInt(offerInput) < product.price * 0.5
+                  ? 'bg-red-50 text-red-600'
+                  : parseInt(offerInput) >= product.price
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-amber-50 text-amber-700'
+              }`}>
+                {parseInt(offerInput) < product.price * 0.5
+                  ? '⚠️ Offre très basse — peu de chances d\'être acceptée'
+                  : parseInt(offerInput) >= product.price
+                  ? '✅ Offre au prix ou supérieure — sera acceptée !'
+                  : `💡 Réduction de ${Math.round((1 - parseInt(offerInput) / product.price) * 100)}% — bonne proposition`
+                }
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => { setShowOfferModal(false); setOfferInput(''); }}
+                className="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-700 font-black text-[11px] uppercase">Annuler</button>
+              <button
+                onClick={handleSendOffer}
+                disabled={!offerInput || parseInt(offerInput) <= 0 || sendingOffer}
+                className="flex-[2] py-4 rounded-2xl text-white font-black text-[11px] uppercase disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg,#16A34A,#115E2E)' }}>
+                {sendingOffer ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : '💰 Envoyer l\'offre'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

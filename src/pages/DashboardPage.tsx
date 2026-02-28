@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSellerProducts } from '@/services/productService';
 import { subscribeSellerReviews } from '@/services/reviewService';
 import { subscribeOrdersAsSeller } from '@/services/orderService';
+import { subscribeSellerPendingOffers, respondToOffer } from '@/services/messagingService';
 import { Product, Order, PLAN_LIMITS, OrderStatus } from '@/types';
 
 // ── SVG Icons ─────────────────────────────────────────────────
@@ -30,9 +31,10 @@ interface DashboardPageProps {
   onUpgrade?: () => void;
   onEditProduct?: (product: Product) => void;
   onOpenOrder?: (orderId: string) => void;
+  onOpenChat?: (convId: string) => void;
 }
 
-type Tab = 'stats' | 'articles' | 'commandes' | 'ventes';
+type Tab = 'stats' | 'articles' | 'commandes' | 'ventes' | 'offres';
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   const map: Record<OrderStatus, { label: string; bg: string; color: string }> = {
@@ -60,7 +62,7 @@ function Sparkline({ value, max }: { value: number; max: number }) {
   );
 }
 
-export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder }: DashboardPageProps) {
+export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder, onOpenChat }: DashboardPageProps) {
   const { userProfile } = useAuth();
   const [products, setProducts]       = useState<Product[]>([]);
   const [orders, setOrders]           = useState<Order[]>([]);
@@ -68,6 +70,8 @@ export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder }:
   const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<Tab>('stats');
+  const [pendingOffers, setPendingOffers] = useState<any[]>([]);
+  const [respondingOffer, setRespondingOffer] = useState<string | null>(null);
 
   const tier     = userProfile?.isPremium ? 'premium' : userProfile?.isVerified ? 'verified' : 'simple';
   const isSimple = tier === 'simple';
@@ -82,7 +86,8 @@ export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder }:
       setAvgRating(avg); setReviewCount(cnt);
     });
     const unsubO = subscribeOrdersAsSeller(userProfile.id, setOrders);
-    return () => { unsubR(); unsubO(); };
+    const unsubOffers = subscribeSellerPendingOffers(userProfile.id, setPendingOffers);
+    return () => { unsubR(); unsubO(); unsubOffers(); };
   }, [userProfile?.id]);
 
   const activeProducts  = products.filter((p: Product) => p.status === 'active');
@@ -102,6 +107,7 @@ export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder }:
     { id: 'stats',     label: 'Aperçu' },
     { id: 'articles',  label: 'Articles',  badge: activeProducts.length },
     { id: 'commandes', label: 'Commandes', badge: activeOrders.length },
+    { id: 'offres',    label: 'Offres',    badge: pendingOffers.length },
     ...(!isSimple ? [{ id: 'ventes' as Tab, label: 'Ventes', badge: completedSales.length }] : []),
   ];
 
@@ -482,6 +488,82 @@ export function DashboardPage({ onBack, onUpgrade, onEditProduct, onOpenOrder }:
                   </button>
                 ))}
               </div>
+            </div>
+          )
+        )}
+
+        {/* ══════════════ OFFRES ══════════════ */}
+        {activeTab === 'offres' && (
+          pendingOffers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 shadow-sm">
+              <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-3">💰</div>
+              <p className="font-black text-slate-400 text-[10px] uppercase">Aucune offre en attente</p>
+              <p className="text-slate-300 text-[9px] font-bold mt-1">Les offres de tes acheteurs apparaîtront ici</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingOffers.map((offer: any) => (
+                <div key={offer.msgId} className="bg-white rounded-3xl border-2 border-amber-200 overflow-hidden shadow-sm p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0">
+                      {offer.productRef?.image && <img src={offer.productRef.image} alt="" className="w-full h-full object-cover"/>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Offre de {offer.buyerName}</p>
+                      <p className="font-black text-slate-900 text-[13px]">{offer.offerPrice.toLocaleString('fr-FR')} FCFA</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[9px] text-slate-400 truncate">{offer.productTitle}</p>
+                        {offer.productRef?.price && (
+                          <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-lg font-bold">
+                            Prix demandé : {offer.productRef.price.toLocaleString('fr-FR')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {offer.productRef?.price && (
+                      <div className={`text-center flex-shrink-0 px-2 py-1 rounded-xl ${
+                        offer.offerPrice < offer.productRef.price * 0.7 ? 'bg-red-50' : offer.offerPrice >= offer.productRef.price * 0.9 ? 'bg-green-50' : 'bg-amber-50'
+                      }`}>
+                        <p className={`font-black text-[11px] ${
+                          offer.offerPrice < offer.productRef.price * 0.7 ? 'text-red-600' : offer.offerPrice >= offer.productRef.price * 0.9 ? 'text-green-700' : 'text-amber-700'
+                        }`}>
+                          -{Math.round((1 - offer.offerPrice / offer.productRef.price) * 100)}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!userProfile) return;
+                        setRespondingOffer(offer.msgId);
+                        try { await respondToOffer(offer.convId, offer.msgId, userProfile.id, userProfile.name, 'refused', userProfile.photoURL); }
+                        finally { setRespondingOffer(null); }
+                      }}
+                      disabled={respondingOffer === offer.msgId}
+                      className="flex-1 py-3 rounded-2xl bg-red-100 text-red-700 font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50">
+                      ❌ Refuser
+                    </button>
+                    <button
+                      onClick={() => onOpenChat?.(offer.convId)}
+                      className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-black text-[10px] uppercase active:scale-95 transition-all">
+                      💬 Discuter
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!userProfile) return;
+                        setRespondingOffer(offer.msgId);
+                        try { await respondToOffer(offer.convId, offer.msgId, userProfile.id, userProfile.name, 'accepted', userProfile.photoURL); }
+                        finally { setRespondingOffer(null); }
+                      }}
+                      disabled={respondingOffer === offer.msgId}
+                      className="flex-[2] py-3 rounded-2xl text-white font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg,#16A34A,#115E2E)' }}>
+                      {respondingOffer === offer.msgId ? '...' : '✅ Accepter'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )
         )}

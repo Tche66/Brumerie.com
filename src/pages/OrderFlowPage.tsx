@@ -13,11 +13,12 @@ interface OrderFlowPageProps {
   product: Product;
   onBack: () => void;
   onOrderCreated: (orderId: string) => void;
+  acceptedPrice?: number; // Prix négocié si offre acceptée
 }
 
 type Step = 'recap' | 'payment_details' | 'proof';
 
-export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPageProps) {
+export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }: OrderFlowPageProps) {
   const { currentUser, userProfile } = useAuth();
   const [step, setStep] = useState<Step>('recap');
   const [orderId, setOrderId] = useState('');
@@ -31,6 +32,9 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
   const [screenshotPreview, setScreenshotPreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Prix effectif = prix négocié ou prix normal
+  const effectivePrice = acceptedPrice ?? product.price;
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -77,7 +81,7 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
         productId: product.id,
         productTitle: product.title,
         productImage: product.images?.[0] || '',
-        productPrice: product.price,
+        productPrice: effectivePrice,
         deliveryFee,
         paymentInfo,
         deliveryType,
@@ -130,7 +134,7 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-slate-900 text-sm truncate">{product.title}</p>
-            <p className="text-green-600 font-black text-lg">{product.price.toLocaleString('fr-FR')} FCFA</p>
+            <p className="text-green-600 font-black text-lg">{effectivePrice.toLocaleString('fr-FR')} FCFA</p>
             <p className="text-slate-400 text-[10px] font-bold uppercase">{product.sellerName}</p>
           </div>
         </div>
@@ -141,7 +145,15 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-[12px] text-slate-600 font-medium">Prix de l'article</span>
-              <span className="font-black text-slate-900 text-[13px]">{product.price.toLocaleString('fr-FR')} FCFA</span>
+              <div className="flex items-center gap-2">
+                {acceptedPrice && acceptedPrice !== product.price && (
+                  <span className="text-[11px] text-slate-400 line-through">{product.price.toLocaleString('fr-FR')}</span>
+                )}
+                <span className="font-black text-slate-900 text-[13px]">{effectivePrice.toLocaleString('fr-FR')} FCFA</span>
+                {acceptedPrice && acceptedPrice !== product.price && (
+                  <span className="text-[9px] bg-green-100 text-green-700 font-black px-1.5 py-0.5 rounded-lg">Négocié ✓</span>
+                )}
+              </div>
             </div>
             {deliveryType === 'delivery' && sellerDelivery.otherZone > 0 && (
               <div className="flex justify-between items-center">
@@ -153,7 +165,7 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
             <div className="flex justify-between items-center">
               <span className="text-[12px] font-black text-slate-800 uppercase">Total à envoyer</span>
               <span className="font-black text-green-700 text-[15px]">
-                {(product.price + (deliveryType === 'delivery' ? sellerDelivery.otherZone : 0)).toLocaleString('fr-FR')} FCFA
+                {(effectivePrice + (deliveryType === 'delivery' ? sellerDelivery.otherZone : 0)).toLocaleString('fr-FR')} FCFA
               </span>
             </div>
           </div>
@@ -244,12 +256,12 @@ export function OrderFlowPage({ product, onBack, onOrderCreated }: OrderFlowPage
           style={{ background: `linear-gradient(135deg, ${method?.color}15, ${method?.color}30)` }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Montant à envoyer</p>
           <p className="text-4xl font-black text-slate-900">
-            {(product.price + (deliveryType === 'delivery' ? sellerDelivery.otherZone : 0)).toLocaleString('fr-FR')}
+            {(effectivePrice + (deliveryType === 'delivery' ? sellerDelivery.otherZone : 0)).toLocaleString('fr-FR')}
           </p>
           <p className="text-lg font-black text-slate-600">FCFA</p>
           {deliveryType === 'delivery' && sellerDelivery.otherZone > 0 && (
             <p className="text-[10px] text-slate-500 font-bold mt-1">
-              Article {product.price.toLocaleString('fr-FR')} + Livraison {sellerDelivery.otherZone.toLocaleString('fr-FR')} FCFA
+              Article {effectivePrice.toLocaleString('fr-FR')} + Livraison {sellerDelivery.otherZone.toLocaleString('fr-FR')} FCFA
             </p>
           )}
         </div>

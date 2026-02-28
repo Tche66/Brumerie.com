@@ -264,3 +264,190 @@ export function subscribeTotalUnread(
     callback(total);
   });
 }
+
+// ── Acheteur envoie une offre de prix ──────────────────────
+export async function sendOfferCard(
+  convId: string,
+  senderId: string,
+  senderName: string,
+  product: { id: string; title: string; price: number; image: string; sellerId: string; neighborhood?: string; sellerName?: string; sellerPhoto?: string },
+  offerPrice: number,
+  senderPhoto?: string,
+): Promise<void> {
+  const batch = writeBatch(db);
+  const convRef = doc(db, 'conversations', convId);
+  const msgRef = doc(collection(db, 'conversations', convId, 'messages'));
+
+  const convSnap = await getDoc(convRef);
+  if (!convSnap.exists()) return;
+  const conv = convSnap.data() as Conversation;
+  const otherId = conv.participants.find(p => p !== senderId) || '';
+
+  batch.set(msgRef, {
+    conversationId: convId,
+    senderId,
+    senderName,
+    senderPhoto: senderPhoto || '',
+    text: `💰 Offre : ${offerPrice.toLocaleString('fr-FR')} FCFA pour "${product.title}"`,
+    type: 'offer_card',
+    productRef: product,
+    offerPrice,
+    offerStatus: 'pending',
+    readBy: [senderId],
+    createdAt: serverTimestamp(),
+  });
+
+  batch.update(convRef, {
+    lastMessage: `💰 Offre : ${offerPrice.toLocaleString('fr-FR')} FCFA`,
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: senderId,
+    [`unreadCount.${otherId}`]: increment(1),
+    [`unreadCount.${senderId}`]: 0,
+  });
+
+  await batch.commit();
+}
+
+// ── Vendeur répond à une offre (accepter / refuser) ────────
+export async function respondToOffer(
+  convId: string,
+  msgId: string,
+  sellerId: string,
+  sellerName: string,
+  decision: 'accepted' | 'refused',
+  sellerPhoto?: string,
+): Promise<void> {
+  const batch = writeBatch(db);
+  const convRef = doc(db, 'conversations', convId);
+  const msgRef = doc(db, 'conversations', convId, 'messages', msgId);
+
+  const convSnap = await getDoc(convRef);
+  if (!convSnap.exists()) return;
+  const conv = convSnap.data() as Conversation;
+  const otherId = conv.participants.find(p => p !== sellerId) || '';
+
+  // Mettre à jour le statut de l'offre dans le message
+  batch.update(msgRef, { offerStatus: decision });
+
+  // Envoyer un message système de réponse
+  const sysRef = doc(collection(db, 'conversations', convId, 'messages'));
+  const sysText = decision === 'accepted'
+    ? `✅ ${sellerName} a accepté ton offre ! Clique sur "Acheter à ce prix" pour finaliser la commande.`
+    : `❌ ${sellerName} a refusé l'offre. Tu peux continuer au prix normal ou faire une nouvelle proposition.`;
+
+  batch.set(sysRef, {
+    conversationId: convId,
+    senderId: 'system',
+    senderName: 'Brumerie',
+    text: sysText,
+    type: 'system',
+    readBy: [],
+    createdAt: serverTimestamp(),
+  });
+
+  batch.update(convRef, {
+    lastMessage: sysText,
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: 'system',
+    [`unreadCount.${otherId}`]: increment(1),
+  });
+
+  await batch.commit();
+}
+
+// ── Vendeur envoie un catalogue personnalisé avec prix custom ──
+export async function sendSellerOfferCard(
+  convId: string,
+  senderId: string,
+  senderName: string,
+  product: { id: string; title: string; price: number; image: string; sellerId: string; neighborhood?: string; sellerName?: string; sellerPhoto?: string },
+  customPrice: number,
+  senderPhoto?: string,
+): Promise<void> {
+  const batch = writeBatch(db);
+  const convRef = doc(db, 'conversations', convId);
+  const msgRef = doc(collection(db, 'conversations', convId, 'messages'));
+
+  const convSnap = await getDoc(convRef);
+  if (!convSnap.exists()) return;
+  const conv = convSnap.data() as Conversation;
+  const otherId = conv.participants.find(p => p !== senderId) || '';
+
+  batch.set(msgRef, {
+    conversationId: convId,
+    senderId,
+    senderName,
+    senderPhoto: senderPhoto || '',
+    text: `🏷️ ${senderName} te propose "${product.title}" à ${customPrice.toLocaleString('fr-FR')} FCFA`,
+    type: 'seller_offer_card',
+    productRef: product,
+    sellerCustomPrice: customPrice,
+    readBy: [senderId],
+    createdAt: serverTimestamp(),
+  });
+
+  batch.update(convRef, {
+    lastMessage: `🏷️ Prix spécial : ${customPrice.toLocaleString('fr-FR')} FCFA`,
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: senderId,
+    [`unreadCount.${otherId}`]: increment(1),
+    [`unreadCount.${senderId}`]: 0,
+  });
+
+  await batch.commit();
+}
+
+// ── S'abonner aux offres en attente pour un vendeur ─────────
+export function subscribeSellerPendingOffers(
+  sellerId: string,
+  callback: (offers: Array<{ msgId: string; convId: string; buyerName: string; productTitle: string; offerPrice: number; productRef: any; createdAt: any }>) => void,
+): () => void {
+  // Écouter les conversations du vendeur
+  const q = query(convsCol, where('participants', 'array-contains', sellerId));
+  
+  let allOffers: Array<any> = [];
+  const unsubsByConv: Record<string, () => void> = {};
+
+  const unsub = onSnapshot(q, (snap) => {
+    // Pour chaque conversation, écouter les messages d'offre en temps réel
+    snap.docs.forEach((convDoc) => {
+      if (unsubsByConv[convDoc.id]) return; // déjà abonné
+
+      const msgsQ = query(
+        collection(db, 'conversations', convDoc.id, 'messages'),
+        where('type', '==', 'offer_card'),
+      );
+
+      unsubsByConv[convDoc.id] = onSnapshot(msgsQ, (msgsSnap) => {
+        // Retirer les offres de cette conv et les remplacer
+        allOffers = allOffers.filter(o => o.convId !== convDoc.id);
+
+        msgsSnap.docs.forEach(m => {
+          const data = m.data();
+          // Seulement les offres en attente envoyées par l'acheteur (pas le vendeur)
+          if (data.offerStatus === 'pending' && data.senderId !== sellerId) {
+            allOffers.push({
+              msgId: m.id,
+              convId: convDoc.id,
+              buyerName: data.senderName,
+              productTitle: data.productRef?.title || '',
+              offerPrice: data.offerPrice,
+              productRef: data.productRef,
+              createdAt: data.createdAt,
+            });
+          }
+        });
+
+        // Trier par date décroissante
+        allOffers.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        callback([...allOffers]);
+      });
+    });
+  });
+
+  // Retourner une fonction qui désabonne tout
+  return () => {
+    unsub();
+    Object.values(unsubsByConv).forEach(u => u());
+  };
+}

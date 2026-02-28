@@ -80,7 +80,7 @@ export function VerificationPage({ onBack }: VerificationPageProps) {
           {/* Badge recommandé */}
           <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
             <div className="bg-amber-400 text-slate-900 text-[10px] font-black uppercase tracking-widest px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-              🔥 RECOMMANDÉ POUR LE VOUS 
+              🔥 RECOMMANDÉ POUR LE MVP
             </div>
           </div>
 

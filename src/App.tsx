@@ -114,6 +114,7 @@ function AppShell() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [productToEdit, setProductToEdit]         = useState<Product | null>(null);
   const [orderFlowProduct, setOrderFlowProduct]   = useState<any>(null);
+  const [acceptedOfferPrice, setAcceptedOfferPrice] = useState<number | undefined>(undefined);
   const [selectedOrderId, setSelectedOrderId]     = useState<string>('');
   const [navigationHistory, setNavigationHistory] = useState<Page[]>(['home']);
   const [showRoleSwitch, setShowRoleSwitch]       = useState(false);
@@ -290,7 +291,27 @@ function AppShell() {
           <ConversationsListPage onOpenConversation={handleOpenConversation} />
         )}
         {activePage === 'chat' && selectedConversation && (
-          <ChatPage conversation={selectedConversation} onBack={goBack} onProductClick={handleProductClick} />
+          <ChatPage
+            conversation={selectedConversation}
+            onBack={goBack}
+            onProductClick={handleProductClick}
+            onBuyAtPrice={(productRef, price) => {
+              // Construire un objet product compatible avec OrderFlowPage depuis le productRef
+              const productForOrder = {
+                id: productRef.id,
+                title: productRef.title,
+                price: productRef.price,
+                images: [productRef.image],
+                sellerId: productRef.sellerId,
+                sellerName: productRef.sellerName || '',
+                sellerPhoto: productRef.sellerPhoto || '',
+                neighborhood: productRef.neighborhood || '',
+              };
+              setOrderFlowProduct(productForOrder);
+              setAcceptedOfferPrice(price);
+              navigate('order-flow');
+            }}
+          />
         )}
         {activePage === 'edit-profile' && <EditProfilePage onBack={goBack} onSaved={goBack} />}
         {activePage === 'settings' && <SettingsPage onBack={goBack} onNavigate={handleNavigate} role={role} />}
@@ -306,6 +327,7 @@ function AppShell() {
             onUpgrade={() => navigate('verification')}
             onEditProduct={(product: Product) => { setProductToEdit(product); navigate('edit-product'); }}
             onOpenOrder={(orderId: string) => { setSelectedOrderId(orderId); navigate('order-status'); }}
+            onOpenChat={async (convId: string) => { await handleStartChat(convId); }}
           />
         )}
         {activePage === 'sell' && !isBuyer && (
@@ -322,7 +344,8 @@ function AppShell() {
           <OrderFlowPage
             product={orderFlowProduct}
             onBack={goBack}
-            onOrderCreated={(orderId) => { setSelectedOrderId(orderId); navigate('order-status'); }}
+            acceptedPrice={acceptedOfferPrice}
+            onOrderCreated={(orderId) => { setAcceptedOfferPrice(undefined); setSelectedOrderId(orderId); navigate('order-status'); }}
           />
         )}
         {activePage === 'edit-product' && productToEdit && (

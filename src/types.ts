@@ -145,7 +145,7 @@ export interface Product {
 }
 
 // ─── MESSAGING ────────────────────────────────────────────
-export type MessageType = 'text' | 'product_card' | 'system';
+export type MessageType = 'text' | 'product_card' | 'system' | 'offer_card' | 'seller_offer_card';
 
 export interface Message {
   id: string;
@@ -157,7 +157,13 @@ export interface Message {
   text?: string;
   productRef?: {
     id: string; title: string; price: number; image: string; sellerId: string;
+    neighborhood?: string; sellerName?: string; sellerPhoto?: string;
   };
+  // Pour offer_card (acheteur fait une offre)
+  offerPrice?: number;
+  offerStatus?: 'pending' | 'accepted' | 'refused';
+  // Pour seller_offer_card (vendeur propose un prix personnalisé)
+  sellerCustomPrice?: number;
   readBy: string[];
   createdAt: any;
 }
