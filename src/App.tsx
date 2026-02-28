@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/useToast';
 import { subscribeToNotifications } from '@/services/notificationService';
 import { GuestShell } from '@/components/GuestShell';
 import { PushNotifPrompt } from '@/components/PushNotifPrompt';
+import { OnboardingGuide, GuideButton } from '@/components/OnboardingGuide';
 
 type Page =
   | 'home' | 'profile' | 'sell' | 'messages'
@@ -269,6 +270,12 @@ function AppShell() {
             onNotificationsClick={() => navigate('notifications')}
           />
         )}
+        {activePage === 'home' && (
+          <>
+            <OnboardingGuide page="home" userId={currentUser?.uid} />
+            <GuideButton page="home" userId={currentUser?.uid} />
+          </>
+        )}
         {activePage === 'product-detail' && selectedProduct && (
           <ProductDetailPage
             product={selectedProduct} onBack={goBack}
@@ -286,6 +293,12 @@ function AppShell() {
         )}
         {activePage === 'profile' && !isBuyer && (
           <ProfilePage onProductClick={handleProductClick} onNavigate={handleNavigate} />
+        )}
+        {activePage === 'profile' && (
+          <>
+            <OnboardingGuide page="profile" userId={currentUser?.uid} />
+            <GuideButton page="profile" userId={currentUser?.uid} />
+          </>
         )}
         {activePage === 'messages' && (
           <ConversationsListPage onOpenConversation={handleOpenConversation} />
@@ -332,6 +345,12 @@ function AppShell() {
         )}
         {activePage === 'sell' && !isBuyer && (
           <SellPage onClose={() => handleBottomNavNavigate('home')} onSuccess={() => handleBottomNavNavigate('home')} />
+        )}
+        {activePage === 'sell' && !isBuyer && (
+          <>
+            <OnboardingGuide page="sell" userId={currentUser?.uid} />
+            <GuideButton page="sell" userId={currentUser?.uid} />
+          </>
         )}
         {activePage === 'notifications' && (
           <NotificationsPage
