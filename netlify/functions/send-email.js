@@ -136,7 +136,7 @@ exports.handler = async (event) => {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender:      { name: "Brumerie", email: process.env.BREVO_SENDER_EMAIL || 'no-reply@brumerie.com' },
+          sender:      { name: "Brumerie côte d'ivoire", email: 'contact.brumerie@gmail.com' },
           to:          [{ email, name }],
           subject:     `${code} — Ton code de vérification Brumerie`,
           htmlContent,
@@ -237,7 +237,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({
-        sender: { name: "Brumerie", email: process.env.BREVO_SENDER_EMAIL || 'no-reply@brumerie.com' },
+        sender: { name: "Brumerie côte d'ivoire", email: 'contact.brumerie@gmail.com' },
         to: [{ email, name: name || email }],
         subject: `Bienvenue sur Brumerie, ${name || ''} 🎉`,
         htmlContent: htmlWelcome,

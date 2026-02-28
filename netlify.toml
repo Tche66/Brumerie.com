@@ -8,8 +8,7 @@
 
 # ── Netlify Functions ─────────────────────────────────────────
 [functions]
-  node_bundler = "zisi"
-  node_version = "18"
+  node_bundler = "esbuild"
 
 # ── SPA Redirect ─────────────────────────────────────────────
 # Toutes les routes renvoient vers index.html (React Router)
