@@ -88,8 +88,10 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
         setError('Problème de configuration email. Contacte le support Brumerie.');
       } else if (err.message?.includes('invalide') || err.message?.includes('401')) {
         setError('Service email temporairement indisponible. Réessaie dans quelques minutes.');
+      } else if (err.message?.includes('Configuration') || err.message?.includes('manquante')) {
+        setError('BREVO_API_KEY manquante dans Netlify. Configure la variable env.');
       } else {
-        setError('Impossible d\'envoyer le code. Vérifie ton adresse email et réessaie.');
+        setError("Erreur : " + (err.message || "Impossible d'envoyer le code. Reessaie."));
       }
     } finally { setLoading(false); }
   };
