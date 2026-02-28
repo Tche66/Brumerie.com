@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── PRODUITS ─────────────────────────────────────────────────
+    match /products/{productId} {
+      // Lecture publique
+      allow read: if true;
+      // Création : utilisateur connecté
+      allow create: if request.auth != null;
+      // Modification/Suppression : propriétaire uniquement
+      allow update, delete: if request.auth != null
+        && request.auth.uid == resource.data.sellerId;
+    }
+
+    // ── UTILISATEURS ─────────────────────────────────────────────
+    match /users/{userId} {
+      // Lecture publique (nécessaire pour chercher un code parrainage)
+      allow read: if true;
+      // Création : son propre compte
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Mise à jour : son propre compte OU mise à jour parrainage cross-user
+      allow update: if request.auth != null && (
+        // Son propre profil
+        request.auth.uid == userId
+        ||
+        // Un autre user peut incrémenter le compteur parrainage du parrain
+        // (quand le filleul s'inscrit avec le code du parrain)
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['referralCount', 'referralBonusPublications',
+                    'referralBonusChats', 'referralFreeVerifiedUntil', 'isVerified'])
+      );
+    }
+
+    // ── CONVERSATIONS / MESSAGES ──────────────────────────────────
+    match /conversations/{convId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null;
+
+      match /messages/{msgId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    // ── AVIS / REVIEWS ────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null
+        && request.auth.uid == resource.data.reviewerId;
+    }
+
+    // ── NOTIFICATIONS ─────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+    }
+
+    // ── COMMANDES / ORDERS ────────────────────────────────────────
+    match /orders/{orderId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.buyerId ||
+        request.auth.uid == resource.data.sellerId
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.buyerId ||
+        request.auth.uid == resource.data.sellerId
+      );
+    }
+
+    // ── TOUTES LES AUTRES COLLECTIONS ────────────────────────────
+    // (bookmarks, etc.)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
