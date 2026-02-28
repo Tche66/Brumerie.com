@@ -3,7 +3,6 @@
 // Aucune dépendance Firestore = aucun problème de règles Firebase
 
 // Stockage OTP en mémoire (durée de vie de la Function instance ~15min)
-// Format: { email → { code, expires, attempts } }
 const otpStore = new Map();
 
 function generateOTP() {
@@ -34,13 +33,15 @@ exports.handler = async (event) => {
 
   const { action } = body;
 
-  // ── ACTION : send_otp — génère + stocke + envoie l'email ──────
+  // ── ACTION : send_otp ─────────────────────────────────────────
   if (action === 'send_otp') {
     const { email, name } = body;
     if (!email || !name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'email et name requis' }) };
-    if (!process.env.BREVO_API_KEY) {
-      console.error('BREVO_API_KEY manquante');
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Configuration manquante' }) };
+
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) {
+      console.error('[OTP] BREVO_API_KEY manquante dans les variables Netlify');
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Configuration serveur manquante. Contacte le support.' }) };
     }
 
     cleanExpired();
@@ -52,7 +53,7 @@ exports.handler = async (event) => {
     }
 
     const code    = generateOTP();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 min
+    const expires = Date.now() + 10 * 60 * 1000;
     otpStore.set(email.toLowerCase(), {
       code,
       expires,
@@ -60,7 +61,6 @@ exports.handler = async (event) => {
       sendCount: (existing?.sendCount || 0) + 1,
     });
 
-    // Envoyer via Brevo
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -73,10 +73,7 @@ exports.handler = async (event) => {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;padding:32px 16px">
     <tr><td align="center">
     <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10)">
-
-      <!-- HEADER VERT -->
       <tr><td style="background:linear-gradient(150deg,#16A34A 0%,#0f5c2e 100%);padding:40px 32px;text-align:center">
-        <!-- Logo texte stylisé (fonctionne dans tous les clients email) -->
         <div style="display:inline-block;background:rgba(255,255,255,0.18);border-radius:20px;padding:16px 28px;margin-bottom:18px">
           <span style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-1px;font-family:Georgia,serif">
             🛍 Brumerie
@@ -86,24 +83,20 @@ exports.handler = async (event) => {
           Vérification Email
         </p>
       </td></tr>
-
-      <!-- CORPS -->
       <tr><td style="padding:40px 32px 32px">
         <h2 style="color:#0f172a;font-size:22px;font-weight:900;margin:0 0 10px;line-height:1.2">
           Bienvenue, ${name} 👋
         </h2>
         <p style="color:#64748b;font-size:14px;line-height:1.65;margin:0 0 30px">
           Ton inscription sur Brumerie est presque terminée !<br>
-          Copie ce code dans l'application pour confirmer ton email et accéder à l'application.
+          Copie ce code dans l'application pour confirmer ton email.
         </p>
-
-        <!-- BLOC CODE -->
         <div style="background:#f8fafc;border:2px dashed #d1fae5;border-radius:20px;padding:30px 24px;text-align:center;margin:0 0 24px">
           <p style="font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:3px;margin:0 0 14px">
             Ton code de vérification
           </p>
           <div style="background:#0f172a;border-radius:16px;padding:18px 24px;display:inline-block;margin:0 0 12px">
-            <span style="font-size:52px;font-weight:900;letter-spacing:0.5em;color:#ffffff;font-family:'Courier New',monospace;padding-right:-0.5em">
+            <span style="font-size:52px;font-weight:900;letter-spacing:0.5em;color:#ffffff;font-family:'Courier New',monospace">
               ${code}
             </span>
           </div>
@@ -111,20 +104,15 @@ exports.handler = async (event) => {
             ⏱&nbsp; Expire dans 10 minutes
           </p>
         </div>
-
-        <!-- SÉCURITÉ -->
         <div style="background:#fef2f2;border-left:4px solid #fca5a5;border-radius:0 12px 12px 0;padding:12px 16px;margin:0 0 24px">
           <p style="color:#991b1b;font-size:12px;font-weight:700;margin:0">
             🔐 &nbsp;Ne partage jamais ce code. Brumerie ne te le demandera jamais par téléphone.
           </p>
         </div>
-
         <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0">
           Si tu n'es pas à l'origine de cette inscription, ignore ce message.
         </p>
       </td></tr>
-
-      <!-- FOOTER -->
       <tr><td style="background:#f8fafc;padding:20px 32px;text-align:center;border-top:2px solid #f0fdf4">
         <p style="color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px">
           Brumerie &bull; Le commerce de quartier &bull; Abidjan 🇨🇮
@@ -133,7 +121,6 @@ exports.handler = async (event) => {
           📬 &nbsp;Email introuvable ? Vérifie ton dossier <strong>Spam</strong> ou <strong>Courrier indésirable</strong>
         </p>
       </td></tr>
-
     </table>
     </td></tr>
   </table>
@@ -143,9 +130,13 @@ exports.handler = async (event) => {
     try {
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method:  'POST',
-        headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
+        headers: {
+          'accept':       'application/json',
+          'api-key':      apiKey,
+          'content-type': 'application/json',
+        },
         body: JSON.stringify({
-          sender:      { name: "Brumerie côte d'ivoire", email: 'contact.brumerie@gmail.com' },
+          sender:      { name: "Brumerie", email: 'contact.brumerie@gmail.com' },
           to:          [{ email, name }],
           subject:     `${code} — Ton code de vérification Brumerie`,
           htmlContent,
@@ -153,43 +144,69 @@ exports.handler = async (event) => {
       });
 
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        console.error('Brevo error:', JSON.stringify(data));
-        // On garde quand même le code stocké pour ne pas bloquer
-        return { statusCode: 502, headers, body: JSON.stringify({ error: 'Erreur envoi email', detail: data.message || '' }) };
+        // ── Diagnostic détaillé de l'erreur Brevo ──────────────
+        const brevoError = data.message || data.error || JSON.stringify(data);
+        console.error(`[OTP] Brevo a refusé l'envoi vers ${email}`);
+        console.error(`[OTP] Status: ${res.status} | Erreur: ${brevoError}`);
+        console.error(`[OTP] Sender: contact.brumerie@gmail.com`);
+        console.error(`[OTP] Clé API (premiers chars): ${apiKey.substring(0, 12)}...`);
+
+        // Diagnostic de la cause probable
+        let hint = '';
+        if (res.status === 401) hint = 'Clé API Brevo invalide ou révoquée';
+        if (res.status === 400 && brevoError.includes('sender')) hint = 'Email sender non vérifié dans Brevo';
+        if (res.status === 403) hint = 'Compte Brevo suspendu ou quota dépassé';
+        console.error(`[OTP] Cause probable: ${hint || 'Voir détail ci-dessus'}`);
+
+        return {
+          statusCode: 502,
+          headers,
+          body: JSON.stringify({
+            error: 'Erreur envoi email',
+            detail: brevoError,
+            hint,
+            status: res.status,
+          }),
+        };
       }
 
-      console.log(`OTP envoyé à ${email}, messageId: ${data.messageId}`);
+      console.log(`[OTP] ✅ Code envoyé à ${email} — messageId: ${data.messageId}`);
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
 
     } catch (err) {
-      console.error('Fetch Brevo failed:', err.message);
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Erreur réseau Brevo' }) };
+      console.error('[OTP] Erreur réseau Brevo:', err.message);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Erreur réseau lors de l\'envoi' }) };
     }
   }
 
-  // ── ACTION : verify_otp — vérifie le code ─────────────────────
+  // ── ACTION : verify_otp ───────────────────────────────────────
   if (action === 'verify_otp') {
     const { email, code } = body;
     if (!email || !code) return { statusCode: 400, headers, body: JSON.stringify({ error: 'email et code requis' }) };
 
     const entry = otpStore.get(email.toLowerCase());
 
-    if (!entry)                     return { statusCode: 200, headers, body: JSON.stringify({ result: 'invalid' }) };
-    if (entry.expires < Date.now()) { otpStore.delete(email.toLowerCase()); return { statusCode: 200, headers, body: JSON.stringify({ result: 'expired' }) }; }
+    if (!entry) return { statusCode: 200, headers, body: JSON.stringify({ result: 'invalid' }) };
+    if (entry.expires < Date.now()) {
+      otpStore.delete(email.toLowerCase());
+      return { statusCode: 200, headers, body: JSON.stringify({ result: 'expired' }) };
+    }
 
-    // Anti-brute force : max 5 essais
     entry.attempts = (entry.attempts || 0) + 1;
-    if (entry.attempts > 5) { otpStore.delete(email.toLowerCase()); return { statusCode: 200, headers, body: JSON.stringify({ result: 'invalid', reason: 'too_many_attempts' }) }; }
+    if (entry.attempts > 5) {
+      otpStore.delete(email.toLowerCase());
+      return { statusCode: 200, headers, body: JSON.stringify({ result: 'invalid', reason: 'too_many_attempts' }) };
+    }
 
     if (entry.code !== code.trim()) return { statusCode: 200, headers, body: JSON.stringify({ result: 'invalid' }) };
 
-    // ✅ Code valide → supprimer
     otpStore.delete(email.toLowerCase());
     return { statusCode: 200, headers, body: JSON.stringify({ result: 'valid' }) };
   }
 
-  // ── ACTION : welcome — email de bienvenue ─────────────────────
+  // ── ACTION : welcome ──────────────────────────────────────────
   if (action === 'welcome') {
     const { email, name } = body;
     if (!email || !process.env.BREVO_API_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: true }) };
@@ -220,7 +237,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({
-        sender: { name: "Brumerie côte d'ivoire", email: 'contact.brumerie@gmail.com' },
+        sender: { name: "Brumerie", email: 'contact.brumerie@gmail.com' },
         to: [{ email, name: name || email }],
         subject: `Bienvenue sur Brumerie, ${name || ''} 🎉`,
         htmlContent: htmlWelcome,

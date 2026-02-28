@@ -20,8 +20,19 @@ export async function sendOTPEmail(
     if (res.status === 429) throw new Error(data.error || 'Trop de tentatives');
     if (res.ok && data.success) return { success: true };
 
-    console.error('[OTP send] Brevo error:', data);
-    throw new Error(data.error || `Erreur ${res.status}`);
+    // Log détaillé pour diagnostic Netlify
+    console.error('[OTP send] Échec Brevo:', {
+      status: res.status,
+      error: data.error,
+      detail: data.detail,
+      hint: data.hint,
+    });
+
+    // Message d'erreur précis selon la cause
+    if (data.hint) throw new Error(data.hint);
+    if (res.status === 401) throw new Error('Clé API email invalide');
+    if (res.status === 400) throw new Error('Configuration email incorrecte');
+    throw new Error(data.error || `Erreur envoi (${res.status})`);
 
   } catch (err: any) {
     // Function pas déployée (réseau/404) → mode dev
