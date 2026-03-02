@@ -556,3 +556,5 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
     </div>
   );
 
+
+}
