@@ -18,7 +18,7 @@ export function calcOrderFees(price: number) {
   return { brumerieFee, sellerReceives };
 }
 
-// ── Créer commande "initiated" ─────────────────────────────
+// ── Créer commande ────────────────────────────────────────
 export async function createOrder(params: {
   buyerId: string;    buyerName: string;  buyerPhoto?: string;
   sellerId: string;   sellerName: string; sellerPhoto?: string;
@@ -27,38 +27,44 @@ export async function createOrder(params: {
   deliveryFee?: number;
   paymentInfo: PaymentInfo;
   deliveryType: 'delivery' | 'in_person';
+  isCOD?: boolean;
 }): Promise<string> {
   const { brumerieFee, sellerReceives } = calcOrderFees(params.productPrice);
+  const isCOD = params.paymentInfo?.method === 'cash_on_delivery' || params.isCOD;
+  const initialStatus: OrderStatus = isCOD ? 'cod_pending' : 'initiated';
 
-  // Deadline 24h pour confirmation vendeur (après envoi preuve)
-  // On la calcule au moment de l'envoi de preuve, pas ici
   const ref = await addDoc(ordersCol, {
     ...params,
+    isCOD: isCOD || false,
     brumerieFee,
     sellerReceives,
-    status: 'initiated' as OrderStatus,
+    status: initialStatus,
     createdAt: serverTimestamp(),
   });
 
-  // Notifier le vendeur qu'une commande est initiée
   const orderId = ref.id;
   await notifyBoth({
     sellerId: params.sellerId,
     sellerMsg: {
-      title: `🛍️ Nouvelle commande !`,
-      body: `${params.buyerName} veut acheter "${params.productTitle}" — Attendez sa preuve de paiement.`,
+      title: isCOD ? `🤝 Commande à la livraison !` : `🛍️ Nouvelle commande !`,
+      body: isCOD
+        ? `${params.buyerName} commande "${params.productTitle}" — Paiement à la livraison.`
+        : `${params.buyerName} veut acheter "${params.productTitle}" — Attendez sa preuve de paiement.`,
       convData: { orderId, productId: params.productId },
     },
     buyerId: params.buyerId,
     buyerMsg: {
-      title: `Commande initiée ✓`,
-      body: `Effectuez le paiement sur ${params.paymentInfo.method.toUpperCase()} au ${params.paymentInfo.phone} (${params.paymentInfo.holderName})`,
+      title: isCOD ? `Commande enregistrée 🤝` : `Commande initiée ✓`,
+      body: isCOD
+        ? `Tu paieras ${params.productPrice.toLocaleString('fr-FR')} FCFA à la réception.`
+        : `Effectuez le paiement sur ${params.paymentInfo.method.toUpperCase()} au ${params.paymentInfo.phone} (${params.paymentInfo.holderName})`,
       convData: { orderId, productId: params.productId },
     },
   });
 
   return ref.id;
 }
+
 
 // ── Acheteur envoie preuve ─────────────────────────────────
 export async function submitProof(

@@ -266,6 +266,18 @@ export function SettingsPage({ onBack, onNavigate, role = 'seller' }: SettingsPa
             label="Support & Aide" sublabel="Comment publier · Ajouter une photo de profil"
             onClick={() => onNavigate('support')}/>
           <GuideButton page="home" userId={currentUser?.uid} asSettingItem />
+          <SettingItem
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>}
+            label="Guide utilisateur"
+            sublabel="Toutes les fonctionnalités expliquées"
+            onClick={() => window.open('/guide', '_blank')}
+          />
+          <SettingItem
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+            label="Télécharger l'app Android"
+            sublabel="Installe Brumerie sur ton téléphone"
+            onClick={() => window.open('/telecharger', '_blank')}
+          />
         </SettingSection>
 
         {/* Déconnexion */}

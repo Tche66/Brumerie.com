@@ -28,6 +28,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
     delivered:  { label: 'Livré ✓',          bg: '#DCFCE7', color: '#166534' },
     disputed:   { label: '⚠️ Litige',         bg: '#FFEDD5', color: '#9A3412' },
     cancelled:  { label: 'Annulé',            bg: '#F3F4F6', color: '#374151' },
+    cod_pending: { label: '🤝 Payer à livraison', bg: '#EFF6FF', color: '#1D4ED8' },
   };
   const s = map[status] || map.initiated;
   return (

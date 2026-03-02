@@ -69,6 +69,30 @@ export function SellerProfilePage({ sellerId, onBack, onProductClick, isGuest, o
   const totalContacts = products.reduce((acc, p) => acc + (p.whatsappClickCount || 0), 0);
   const soldCount = products.filter(p => p.status === 'sold').length;
 
+  // ── Partage profil ────────────────────────────────────────
+  const [showShare, setShowShare] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const profileUrl = `https://www.brumerie.com/vendeur/${sellerId}`;
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${seller?.name} — Boutique sur Brumerie`,
+          text: `Découvre la boutique de ${seller?.name} sur Brumerie 🛍`,
+          url: profileUrl,
+        });
+      } catch {}
+    } else {
+      setShowShare(true);
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(profileUrl);
+    setShowShare(false);
+  };
+
   // Date membre lisible
   const memberSince = (() => {
     if (!seller?.createdAt) return null;
@@ -84,7 +108,30 @@ export function SellerProfilePage({ sellerId, onBack, onProductClick, isGuest, o
         <button onClick={onBack} className="w-11 h-11 flex items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 active:scale-90 transition-all">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" stroke="#0F0F0F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <h1 className="font-black text-xs uppercase tracking-[0.2em] text-slate-900">Profil Vendeur</h1>
+        <h1 className="font-black text-xs uppercase tracking-[0.2em] text-slate-900 flex-1">Profil Vendeur</h1>
+        {/* Bouton QR code */}
+        {seller && (
+          <button onClick={() => setShowQR(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 active:scale-90 transition-all"
+            title="QR Code boutique">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              <rect x="5" y="5" width="3" height="3" fill="#475569"/><rect x="16" y="5" width="3" height="3" fill="#475569"/><rect x="5" y="16" width="3" height="3" fill="#475569"/>
+              <path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 17h1v1h-1z"/>
+            </svg>
+          </button>
+        )}
+        {/* Bouton partage */}
+        {seller && (
+          <button onClick={handleShare}
+            className="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 active:scale-90 transition-all"
+            title="Partager la boutique">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+        )}
         {isGuest && (
           <button onClick={() => onGuestAction?.('default')}
             className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full uppercase tracking-wider">
@@ -92,6 +139,72 @@ export function SellerProfilePage({ sellerId, onBack, onProductClick, isGuest, o
           </button>
         )}
       </div>
+
+      {/* ── MODAL PARTAGE ── */}
+      {showShare && seller && (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowShare(false)}>
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <p className="font-black text-slate-900 text-base mb-1">Partager la boutique</p>
+            <p className="text-[11px] text-slate-400 font-medium mb-5">{seller.name}</p>
+            {/* Lien */}
+            <div className="bg-slate-50 rounded-2xl p-4 mb-4 flex items-center gap-3">
+              <p className="text-[11px] text-slate-600 font-mono flex-1 truncate">{profileUrl}</p>
+              <button onClick={copyLink}
+                className="bg-slate-900 text-white text-[10px] font-black px-3 py-2 rounded-xl uppercase tracking-wide active:scale-95">
+                Copier
+              </button>
+            </div>
+            {/* Réseaux sociaux */}
+            <div className="grid grid-cols-4 gap-3 mb-5">
+              {[
+                { name: 'WhatsApp', ico: '💬', color: '#25D366', url: `https://wa.me/?text=${encodeURIComponent(`Découvre ${seller.name} sur Brumerie 🛍 ${profileUrl}`)}` },
+                { name: 'Facebook', ico: '👥', color: '#1877F2', url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}` },
+                { name: 'Twitter', ico: '🐦', color: '#1DA1F2', url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Découvre ${seller.name} sur Brumerie 🛍`)}&url=${encodeURIComponent(profileUrl)}` },
+                { name: 'Telegram', ico: '✈️', color: '#0088CC', url: `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Boutique ${seller.name} sur Brumerie`)}` },
+              ].map(s => (
+                <a key={s.name} href={s.url} target="_blank" rel="noreferrer"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl active:scale-95 transition-all"
+                  style={{ background: `${s.color}15` }}>
+                  <span className="text-2xl">{s.ico}</span>
+                  <span className="text-[9px] font-black text-slate-600">{s.name}</span>
+                </a>
+              ))}
+            </div>
+            <button onClick={() => setShowShare(false)}
+              className="w-full py-4 rounded-2xl bg-slate-100 text-slate-600 font-black text-[11px] uppercase tracking-widest active:scale-95">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL QR CODE ── */}
+      {showQR && seller && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowQR(false)}>
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-xs text-center" onClick={e => e.stopPropagation()}>
+            <p className="font-black text-slate-900 text-base mb-1">QR Code boutique</p>
+            <p className="text-[11px] text-slate-400 font-medium mb-6">{seller.name}</p>
+            {/* QR Code via API Google Charts — gratuit, no install */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 inline-block mb-5">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(profileUrl)}&color=0F172A&bgcolor=FFFFFF`}
+                alt="QR Code"
+                width={200} height={200}
+                className="rounded-xl"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium mb-5">Scanne pour visiter la boutique</p>
+            <button onClick={() => setShowQR(false)}
+              className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest active:scale-95">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center pt-32 gap-6 animate-pulse">

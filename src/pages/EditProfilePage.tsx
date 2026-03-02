@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { NEIGHBORHOODS, MOBILE_PAYMENT_METHODS, PaymentInfo } from '@/types';
 import { PaymentLogo } from '@/components/PaymentLogo';
 import { compressImage } from '@/utils/helpers';
@@ -28,6 +29,36 @@ export function EditProfilePage({ onBack, onSaved }: EditProfilePageProps) {
 
   // Charger le profil frais depuis Firestore
   React.useEffect(() => { refreshUserProfile(); }, []);
+
+  // ── Changement email ──────────────────────────────────────
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+
+  const handleChangeEmail = async () => {
+    if (!currentUser || !newEmail.trim() || !currentPassword.trim()) return;
+    setEmailLoading(true); setEmailError(''); setEmailSuccess('');
+    try {
+      // Réauthentifier avant de changer l'email (exigé par Firebase)
+      const credential = EmailAuthProvider.credential(currentUser.email!, currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+      await updateEmail(currentUser, newEmail.trim());
+      // Mettre à jour Firestore aussi
+      await updateDoc(doc(db, 'users', currentUser.uid), { email: newEmail.trim() });
+      await refreshUserProfile();
+      setEmailSuccess('Email modifié ! Reconnecte-toi avec ton nouvel email.');
+      setNewEmail(''); setCurrentPassword('');
+      setTimeout(() => { setShowEmailChange(false); setEmailSuccess(''); }, 3000);
+    } catch (e: any) {
+      if (e.code === 'auth/wrong-password') setEmailError('Mot de passe incorrect.');
+      else if (e.code === 'auth/email-already-in-use') setEmailError('Cet email est déjà utilisé.');
+      else if (e.code === 'auth/invalid-email') setEmailError('Email invalide.');
+      else setEmailError('Erreur. Réessaie dans quelques instants.');
+    } finally { setEmailLoading(false); }
+  };
 
   // ── Champs communs ────────────────────────────────────────
   const [name, setName] = useState(userProfile?.name || '');
@@ -168,6 +199,42 @@ export function EditProfilePage({ onBack, onSaved }: EditProfilePageProps) {
               <input type="text" value={name} onChange={e => setName(e.target.value)}
                 placeholder={isSeller ? 'Ex: Boutique de Marie' : 'Ex: Koffi'}
                 className="w-full px-5 py-4 bg-white rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-green-500 outline-none"/>
+            </div>
+
+            {/* ── Modification email ── */}
+            <div>
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Adresse email</label>
+              <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-sm">
+                <p className="flex-1 text-sm font-bold text-slate-700 truncate">{currentUser?.email}</p>
+                <button onClick={() => setShowEmailChange(v => !v)}
+                  className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-xl uppercase tracking-wider active:scale-95 transition-all flex-shrink-0">
+                  Modifier
+                </button>
+              </div>
+              {showEmailChange && (
+                <div className="mt-3 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Changer mon email</p>
+                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                    placeholder="Nouvel email"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-xl text-[13px] border-2 border-transparent focus:border-green-400 outline-none"/>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="Mot de passe actuel (sécurité)"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-xl text-[13px] border-2 border-transparent focus:border-green-400 outline-none"/>
+                  {emailError && <p className="text-[11px] text-red-500 font-bold">{emailError}</p>}
+                  {emailSuccess && <p className="text-[11px] text-green-600 font-bold">{emailSuccess}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowEmailChange(false); setEmailError(''); }}
+                      className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-black text-[10px] uppercase">
+                      Annuler
+                    </button>
+                    <button onClick={handleChangeEmail}
+                      disabled={emailLoading || !newEmail.trim() || !currentPassword.trim()}
+                      className="flex-1 py-3 rounded-xl bg-green-600 text-white font-black text-[10px] uppercase disabled:opacity-40 active:scale-95 transition-all">
+                      {emailLoading ? '...' : 'Confirmer'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quartier */}

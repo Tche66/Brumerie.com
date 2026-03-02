@@ -16,12 +16,14 @@ interface OrderFlowPageProps {
   acceptedPrice?: number; // Prix négocié si offre acceptée
 }
 
-type Step = 'recap' | 'payment_details' | 'proof';
+type Step = 'recap' | 'payment_details' | 'proof' | 'cod_confirm';
+type PaymentMode = 'mobile_money' | 'cash_on_delivery';
 
 export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }: OrderFlowPageProps) {
   const { currentUser, userProfile } = useAuth();
   const [step, setStep] = useState<Step>('recap');
   const [orderId, setOrderId] = useState('');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('mobile_money');
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'in_person'>('in_person');
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [sellerPayments, setSellerPayments] = useState<PaymentInfo[]>([]);
@@ -88,6 +90,34 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
       });
       setOrderId(id);
       setStep('proof');
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  // ── Paiement à la livraison — crée commande COD directement ──
+  const handleStartCOD = async () => {
+    if (!currentUser || !userProfile) return;
+    setLoading(true);
+    try {
+      const deliveryFee = deliveryType === 'delivery' ? sellerDelivery.otherZone : 0;
+      const codPaymentInfo: any = { method: 'cash_on_delivery', phone: '', holderName: '' };
+      const id = await createOrder({
+        buyerId: currentUser.uid,
+        buyerName: userProfile.name,
+        buyerPhoto: userProfile.photoURL,
+        sellerId: product.sellerId,
+        sellerName: product.sellerName,
+        sellerPhoto: product.sellerPhoto,
+        productId: product.id,
+        productTitle: product.title,
+        productImage: product.images?.[0] || '',
+        productPrice: effectivePrice,
+        deliveryFee,
+        paymentInfo: codPaymentInfo,
+        deliveryType,
+      });
+      setOrderId(id);
+      setStep('cod_confirm');
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -190,7 +220,42 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
           </div>
         </div>
 
-        {/* Choix méthode de paiement */}
+        {/* ── MODE DE PAIEMENT — Mobile Money ou À la livraison ── */}
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Mode de paiement</p>
+          <div className="grid grid-cols-1 gap-3 mb-4">
+            <button onClick={() => setPaymentMode('mobile_money')}
+              className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all active:scale-95 ${paymentMode === 'mobile_money' ? 'border-green-500 bg-green-50' : 'border-slate-100 bg-slate-50'}`}>
+              <div className="text-2xl flex-shrink-0">💳</div>
+              <div className="flex-1">
+                <p className={`text-[12px] font-black ${paymentMode === 'mobile_money' ? 'text-green-800' : 'text-slate-700'}`}>Payer maintenant</p>
+                <p className="text-[10px] text-slate-400 font-medium">Wave · Orange Money · MTN · Moov</p>
+              </div>
+              {paymentMode === 'mobile_money' && (
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              )}
+            </button>
+
+            <button onClick={() => setPaymentMode('cash_on_delivery')}
+              className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all active:scale-95 ${paymentMode === 'cash_on_delivery' ? 'border-blue-500 bg-blue-50' : 'border-slate-100 bg-slate-50'}`}>
+              <div className="text-2xl flex-shrink-0">🤝</div>
+              <div className="flex-1">
+                <p className={`text-[12px] font-black ${paymentMode === 'cash_on_delivery' ? 'text-blue-800' : 'text-slate-700'}`}>Commander – Payer à la livraison</p>
+                <p className="text-[10px] text-slate-400 font-medium">Le vendeur livre, tu paies à la réception</p>
+              </div>
+              {paymentMode === 'cash_on_delivery' && (
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Choix méthode de paiement Mobile Money — visible seulement si mobile_money */}
+        {paymentMode === 'mobile_money' && (
         <div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Méthode de paiement du vendeur</p>
           {loadingSellerInfo ? (
@@ -226,16 +291,32 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
             </div>
           )}
         </div>
+        )} {/* fin paymentMode === 'mobile_money' */}
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100">
-        <button
-          onClick={() => setStep('payment_details')}
-          disabled={!paymentInfo || loading}
-          className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white shadow-xl shadow-green-200 active:scale-95 transition-all disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #16A34A, #115E2E)' }}>
-          Continuer → Voir les coordonnées
-        </button>
+      <div className="px-5 py-4 border-t border-slate-100 space-y-3">
+        {paymentMode === 'mobile_money' ? (
+          <button
+            onClick={() => setStep('payment_details')}
+            disabled={!paymentInfo || loading}
+            className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white shadow-xl shadow-green-200 active:scale-95 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #16A34A, #115E2E)' }}>
+            Continuer → Voir les coordonnées
+          </button>
+        ) : (
+          <button
+            onClick={handleStartCOD}
+            disabled={loading}
+            className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white shadow-xl shadow-blue-200 active:scale-95 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}>
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                Commande en cours...
+              </div>
+            ) : '🤝 Commander — Payer à la livraison'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -323,6 +404,81 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
     </div>
   );
 
+  // ── ÉTAPE COD : Confirmation réception à la livraison ───
+  if (step === 'cod_confirm') return (
+    <div className="fixed inset-0 bg-white z-[90] flex flex-col font-sans">
+      <div className="flex items-center gap-4 px-5 py-5 border-b border-slate-100">
+        <div className="w-11 h-11 bg-blue-50 rounded-2xl flex items-center justify-center">
+          <span className="text-xl">🤝</span>
+        </div>
+        <div>
+          <h1 className="font-black text-slate-900 text-base uppercase tracking-tight">Commande confirmée</h1>
+          <p className="text-[9px] text-blue-600 font-bold uppercase tracking-widest">Paiement à la livraison</p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
+        {/* Récap produit */}
+        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0">
+            <img src={product.images?.[0]} alt={product.title} className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-slate-900 text-sm truncate">{product.title}</p>
+            <p className="text-green-600 font-black text-lg">{effectivePrice.toLocaleString('fr-FR')} FCFA</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase">{product.sellerName}</p>
+          </div>
+        </div>
+
+        {/* Message info */}
+        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+          <p className="text-[12px] font-black text-blue-900 mb-2">📦 Ta commande est enregistrée !</p>
+          <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
+            Le vendeur a été notifié. Tu paieras <strong>{effectivePrice.toLocaleString('fr-FR')} FCFA</strong> directement
+            {deliveryType === 'delivery' ? ' à la livraison.' : ' lors du retrait en main propre.'}
+          </p>
+        </div>
+
+        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+          <p className="text-[11px] text-amber-800 font-bold leading-relaxed">
+            ⚠️ Contacte le vendeur via la messagerie pour convenir des détails de la remise (lieu, heure).
+          </p>
+        </div>
+
+        {/* Étapes du flux COD */}
+        <div className="bg-slate-50 rounded-3xl p-5">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Ce qui se passe ensuite</p>
+          <div className="space-y-4">
+            {[
+              { ico: '📞', t: 'Le vendeur te contacte', d: 'Via la messagerie Brumerie pour confirmer la remise' },
+              { ico: deliveryType === 'delivery' ? '🚚' : '📍', t: deliveryType === 'delivery' ? 'Livraison chez toi' : 'Retrait en main propre', d: 'Conviens du lieu et de l\'heure avec le vendeur' },
+              { ico: '💵', t: 'Tu paies à la réception', d: `${effectivePrice.toLocaleString('fr-FR')} FCFA en cash au moment de la remise` },
+              { ico: '⭐', t: 'Tu notes le vendeur', d: 'Reviens confirmer la réception et laisser un avis' },
+            ].map((s, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-lg flex-shrink-0 shadow-sm">{s.ico}</div>
+                <div>
+                  <p className="text-[12px] font-black text-slate-900">{s.t}</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 border-t border-slate-100 space-y-3">
+        <button
+          onClick={() => onOrderCreated(orderId)}
+          className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white active:scale-95 transition-all"
+          style={{ background: 'linear-gradient(135deg, #16A34A, #115E2E)' }}>
+          Voir le suivi de ma commande →
+        </button>
+      </div>
+    </div>
+  );
+
+
   // ── ÉTAPE 3 : Upload preuve ─────────────────────────────
   return (
     <div className="fixed inset-0 bg-white z-[90] flex flex-col font-sans">
@@ -399,4 +555,4 @@ export function OrderFlowPage({ product, onBack, onOrderCreated, acceptedPrice }
       </div>
     </div>
   );
-}
+

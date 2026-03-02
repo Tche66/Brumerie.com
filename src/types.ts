@@ -203,7 +203,7 @@ export interface PaymentInfo {
 }
 
 // ─── COMMANDES ────────────────────────────────────────────
-export type OrderStatus = 'initiated' | 'proof_sent' | 'confirmed' | 'delivered' | 'disputed' | 'cancelled';
+export type OrderStatus = 'initiated' | 'proof_sent' | 'confirmed' | 'delivered' | 'disputed' | 'cancelled' | 'cod_pending';
 
 export interface OrderProof {
   screenshotUrl: string;
@@ -231,6 +231,7 @@ export interface Order {
   proof?: OrderProof;
   status: OrderStatus;
   deliveryType: 'delivery' | 'in_person';
+  isCOD?: boolean; // Paiement à la livraison
   reminderSentAt?: any;
   autoDisputeAt?: any;
   proofSentAt?: any;
