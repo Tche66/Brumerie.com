@@ -203,7 +203,7 @@ export interface PaymentInfo {
 }
 
 // ─── COMMANDES ────────────────────────────────────────────
-export type OrderStatus = 'initiated' | 'proof_sent' | 'confirmed' | 'delivered' | 'disputed' | 'cancelled' | 'cod_pending';
+export type OrderStatus = 'initiated' | 'proof_sent' | 'confirmed' | 'delivered' | 'disputed' | 'cancelled' | 'cod_pending' | 'cod_confirmed';
 
 export interface OrderProof {
   screenshotUrl: string;

@@ -6,6 +6,7 @@ import {
   subscribeToOrder, confirmPaymentReceived, submitProof,
   confirmDelivery, openOrderDispute, getCountdown,
   subscribeOrdersAsBuyer, subscribeOrdersAsSeller, checkExpiredOrders,
+  confirmCODReady, confirmCODDelivered,
 } from '@/services/orderService';
 import { Order, OrderStatus, MOBILE_PAYMENT_METHODS } from '@/types';
 import { RatingModal } from '@/components/RatingModal';
@@ -28,7 +29,8 @@ function StatusBadge({ status }: { status: OrderStatus }) {
     delivered:  { label: 'Livré ✓',          bg: '#DCFCE7', color: '#166534' },
     disputed:   { label: '⚠️ Litige',         bg: '#FFEDD5', color: '#9A3412' },
     cancelled:  { label: 'Annulé',            bg: '#F3F4F6', color: '#374151' },
-    cod_pending: { label: '🤝 Payer à livraison', bg: '#EFF6FF', color: '#1D4ED8' },
+    cod_pending:   { label: '🤝 Payer à livraison', bg: '#EFF6FF', color: '#1D4ED8' },
+    cod_confirmed: { label: '🚚 En livraison',      bg: '#F0FDF4', color: '#166534' },
   };
   const s = map[status] || map.initiated;
   return (
@@ -63,8 +65,8 @@ function OrderCard({ order, viewAs, onClick }: {
   order: Order; viewAs: 'buyer' | 'seller'; onClick: () => void;
 }) {
   const needsAction =
-    (viewAs === 'seller' && order.status === 'proof_sent') ||
-    (viewAs === 'buyer'  && order.status === 'confirmed');
+    (viewAs === 'seller' && (order.status === 'proof_sent' || order.status === 'cod_pending')) ||
+    (viewAs === 'buyer'  && (order.status === 'confirmed'  || order.status === 'cod_confirmed'));
 
   const otherName = viewAs === 'buyer' ? order.sellerName : order.buyerName;
   const totalDisplay = (order as any).totalAmount || order.productPrice;
@@ -236,14 +238,18 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
           <Countdown deadline={(order as any).autoDisputeAt} label="⏳ Il vous reste"/>
         )}
 
-        {/* Stepper */}
+        {/* Stepper — 2 étapes COD, 4 étapes paiement mobile */}
         <div className="space-y-3">
-          {[
-            { label: '🛍️ Commande initiée',   done: true },
-            { label: '📸 Preuve envoyée',      done: ['proof_sent','confirmed','delivered','disputed'].includes(order.status) },
-            { label: '✅ Paiement confirmé',   done: ['confirmed','delivered'].includes(order.status) },
-            { label: '📦 Livraison confirmée', done: order.status === 'delivered' },
-          ].map((s, i) => (
+          {(order.isCOD ? [
+            { label: '🤝 Commande confirmée',        done: true },
+            { label: '🚚 En cours de livraison',     done: ['cod_confirmed','delivered'].includes(order.status) },
+            { label: '✅ Reçu & payé',               done: order.status === 'delivered' },
+          ] : [
+            { label: '🛍️ Commande initiée',              done: true },
+            { label: '📸 Preuve envoyée',                done: ['proof_sent','confirmed','delivered','disputed'].includes(order.status) },
+            { label: '✅ Paiement confirmé',             done: ['confirmed','delivered'].includes(order.status) },
+            { label: '📦 Livraison confirmée',           done: order.status === 'delivered' },
+          ]).map((s, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${s.done ? 'bg-green-500' : 'bg-slate-100'}`}>
                 {s.done
@@ -280,7 +286,85 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
           </div>
         )}
 
-        {/* ── ACTIONS VENDEUR ── */}
+        {/* ══════════════════════════════════════════════════
+            FLUX COD — PAYER À LA LIVRAISON
+        ══════════════════════════════════════════════════ */}
+
+        {/* VENDEUR — Étape 1 : confirmer mise en livraison */}
+        {isSeller && order.status === 'cod_pending' && (
+          <div className="space-y-3 pt-2">
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+              <p className="text-[10px] font-black text-blue-800 uppercase mb-1">🤝 Nouvelle commande à livrer</p>
+              <p className="text-[11px] text-blue-700 font-bold leading-relaxed">
+                L'acheteur paiera à la réception. Confirmez dès que vous êtes prêt à livrer.
+              </p>
+            </div>
+            <button onClick={() => act(() => confirmCODReady(orderId))} disabled={loading}
+              className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white shadow-xl shadow-blue-200 active:scale-95 transition-all disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}>
+              {loading
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"/>
+                : '📦 Je mets en livraison →'}
+            </button>
+            <button onClick={() => setShowDisputeForm(true)}
+              className="w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-orange-600 bg-orange-50 border border-orange-100 active:scale-95 transition-all">
+              Signaler un problème
+            </button>
+          </div>
+        )}
+
+        {/* VENDEUR — Étape 2 : en attente de confirmation acheteur */}
+        {isSeller && order.status === 'cod_confirmed' && (
+          <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
+            <p className="text-[10px] font-black text-green-800 uppercase mb-1">🚚 Livraison en cours</p>
+            <p className="text-[11px] text-green-700 font-bold">
+              En attente de la confirmation de réception par l'acheteur. Le paiement sera encaissé à la livraison.
+            </p>
+          </div>
+        )}
+
+        {/* ACHETEUR — Étape 1 : attente livraison */}
+        {isBuyer && order.status === 'cod_pending' && (
+          <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+            <p className="text-[10px] font-black text-blue-800 uppercase mb-1">🤝 Paiement à la livraison</p>
+            <p className="text-[11px] text-blue-700 font-bold leading-relaxed">
+              Commande confirmée ! Le vendeur va préparer la livraison. Vous paierez <span className="text-blue-900">{totalDisplay.toLocaleString('fr-FR')} FCFA</span> à la réception.
+            </p>
+          </div>
+        )}
+
+        {/* ACHETEUR — Étape 2 : confirmer réception + paiement */}
+        {isBuyer && order.status === 'cod_confirmed' && (
+          <div className="space-y-3 pt-2">
+            <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
+              <p className="text-[10px] font-black text-green-800 uppercase mb-1">🚚 Votre commande arrive !</p>
+              <p className="text-[11px] text-green-700 font-bold leading-relaxed">
+                {order.sellerName} a confirmé l'envoi. Payez <span className="text-green-900 font-black">{totalDisplay.toLocaleString('fr-FR')} FCFA</span> au livreur et confirmez la réception.
+              </p>
+            </div>
+            <button onClick={() => act(async () => {
+              await confirmCODDelivered(orderId);
+              try { await updateDoc(doc(db, 'products', order.productId), { status: 'sold' }); } catch {}
+              setShowRatingModal(true);
+            })} disabled={loading}
+              className="w-full py-5 rounded-2xl font-black text-[12px] uppercase tracking-widest text-white shadow-xl shadow-green-200 active:scale-95 transition-all disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #16A34A, #115E2E)' }}>
+              {loading
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"/>
+                : "J'ai reçu et payé ✓"}
+            </button>
+            <button onClick={() => setShowDisputeForm(true)}
+              className="w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-orange-600 bg-orange-50 border border-orange-100 active:scale-95 transition-all">
+              Signaler un problème
+            </button>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════
+            FLUX MOBILE MONEY
+        ══════════════════════════════════════════════════ */}
+
+        {/* ── ACTIONS VENDEUR — paiement mobile ── */}
         {isSeller && order.status === 'proof_sent' && (
           <div className="space-y-3 pt-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vérifiez votre solde puis confirmez</p>
@@ -296,7 +380,7 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
           </div>
         )}
 
-        {/* ── ACTIONS ACHETEUR ── */}
+        {/* ── ACHETEUR — Mobile money : en attente preuve ── */}
         {isBuyer && order.status === 'initiated' && (
           <div className="space-y-3 pt-2">
             <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
@@ -358,7 +442,7 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
         )}
       </div>
 
-      {/* Modale notation post-livraison */}
+      {/* Modale notation post-livraison (mobile money ET COD) */}
       {showRatingModal && currentUser && order.status === 'delivered' && isBuyer && (
         <RatingModal
           orderId={orderId}
@@ -442,8 +526,8 @@ export function OrderStatusPage({ orderId, onBack }: OrderStatusPageProps) {
   }
 
   const isSeller = userProfile?.role === 'seller';
-  const pendingSales = sales.filter(o => o.status === 'proof_sent').length;
-  const pendingPurchases = purchases.filter(o => o.status === 'confirmed').length;
+  const pendingSales     = sales.filter(o => o.status === 'proof_sent' || o.status === 'cod_pending').length;
+  const pendingPurchases = purchases.filter(o => o.status === 'confirmed' || o.status === 'cod_confirmed').length;
   const currentList = tab === 'purchases' ? purchases : sales;
   const currentRole = tab === 'purchases' ? 'buyer' : 'seller';
 

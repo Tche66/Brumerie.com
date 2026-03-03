@@ -41,3 +41,11 @@
   for = "/manifest.json"
   [headers.values]
     Cache-Control = "no-cache"
+
+# ── CORS pour les Functions (nécessaire pour Capacitor APK) ──
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"

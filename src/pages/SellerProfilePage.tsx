@@ -180,28 +180,54 @@ export function SellerProfilePage({ sellerId, onBack, onProductClick, isGuest, o
         </div>
       )}
 
-      {/* ── MODAL QR CODE ── */}
+      {/* ── MODAL QR CODE — Design Brumerie ── */}
       {showQR && seller && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
           onClick={() => setShowQR(false)}>
-          <div className="bg-white rounded-[2rem] p-8 w-full max-w-xs text-center" onClick={e => e.stopPropagation()}>
-            <p className="font-black text-slate-900 text-base mb-1">QR Code boutique</p>
-            <p className="text-[11px] text-slate-400 font-medium mb-6">{seller.name}</p>
-            {/* QR Code via API Google Charts — gratuit, no install */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100 inline-block mb-5">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(profileUrl)}&color=0F172A&bgcolor=FFFFFF`}
-                alt="QR Code"
-                width={200} height={200}
-                className="rounded-xl"
-              />
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+
+            {/* Header vert Brumerie */}
+            <div className="px-6 pt-7 pb-5 text-center" style={{ background: 'linear-gradient(150deg, #16A34A 0%, #0f5c2e 100%)' }}>
+              {/* Mini logo */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" fill="white" opacity="0.9"/>
+                    <path d="M8 10h8M8 14h5" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <span className="text-white font-black text-[15px] tracking-wide">BRUMERIE</span>
+              </div>
+              <p className="text-white/60 text-[9px] font-bold uppercase tracking-[3px]">QR Code boutique</p>
+              <p className="text-white font-black text-[14px] mt-1 truncate px-2">{seller.name}</p>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium mb-5">Scanne pour visiter la boutique</p>
-            <button onClick={() => setShowQR(false)}
-              className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest active:scale-95">
-              Fermer
-            </button>
+
+            {/* Zone QR */}
+            <div className="px-6 py-5 flex flex-col items-center">
+              <div className="bg-white rounded-2xl p-3 border-2 border-green-100 shadow-lg mb-4">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(profileUrl)}&color=0f5c2e&bgcolor=FFFFFF`}
+                  alt="QR Code"
+                  width={190} height={190}
+                  className="rounded-xl block"
+                />
+              </div>
+
+              {/* Slogan */}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-px flex-1 bg-green-100"/>
+                <p className="text-[10px] font-black text-green-700 uppercase tracking-widest">Trouve ton bonheur ici</p>
+                <div className="h-px flex-1 bg-green-100"/>
+              </div>
+              <p className="text-[9px] text-slate-400 font-medium mb-5">Scanne pour visiter la boutique</p>
+
+              <button onClick={() => setShowQR(false)}
+                className="w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-white active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #0f5c2e, #16A34A)' }}>
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}

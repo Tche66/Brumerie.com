@@ -19,8 +19,10 @@ const config: CapacitorConfig = {
   },
   server: {
     allowNavigation: [
-      '*.firebaseapp.com','*.googleapis.com',
-      '*.cloudinary.com','brumerie.com','www.brumerie.com',
+      '*.firebaseapp.com', '*.googleapis.com',
+      '*.cloudinary.com',
+      'brumerie.com', 'www.brumerie.com',
+      'brumerie.netlify.app',
     ],
   },
 };

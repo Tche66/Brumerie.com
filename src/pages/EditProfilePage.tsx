@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { NEIGHBORHOODS, MOBILE_PAYMENT_METHODS, PaymentInfo } from '@/types';
 import { PaymentLogo } from '@/components/PaymentLogo';
 import { compressImage } from '@/utils/helpers';
@@ -45,13 +45,14 @@ export function EditProfilePage({ onBack, onSaved }: EditProfilePageProps) {
       // Réauthentifier avant de changer l'email (exigé par Firebase)
       const credential = EmailAuthProvider.credential(currentUser.email!, currentPassword);
       await reauthenticateWithCredential(currentUser, credential);
-      await updateEmail(currentUser, newEmail.trim());
-      // Mettre à jour Firestore aussi
-      await updateDoc(doc(db, 'users', currentUser.uid), { email: newEmail.trim() });
+      // verifyBeforeUpdateEmail envoie un email de confirmation avant de changer
+      await verifyBeforeUpdateEmail(currentUser, newEmail.trim());
+      // Pré-enregistrer dans Firestore (sera actif après confirmation email)
+      await updateDoc(doc(db, 'users', currentUser.uid), { pendingEmail: newEmail.trim() });
       await refreshUserProfile();
-      setEmailSuccess('Email modifié ! Reconnecte-toi avec ton nouvel email.');
+      setEmailSuccess('Un email de confirmation a été envoyé à ' + newEmail.trim() + '. Confirme pour activer le changement.');
       setNewEmail(''); setCurrentPassword('');
-      setTimeout(() => { setShowEmailChange(false); setEmailSuccess(''); }, 3000);
+      setTimeout(() => { setShowEmailChange(false); setEmailSuccess(''); }, 5000);
     } catch (e: any) {
       if (e.code === 'auth/wrong-password') setEmailError('Mot de passe incorrect.');
       else if (e.code === 'auth/email-already-in-use') setEmailError('Cet email est déjà utilisé.');

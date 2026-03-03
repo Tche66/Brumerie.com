@@ -1,7 +1,15 @@
 // src/services/otpService.ts — OTP 100% via Netlify Function (sans Firestore)
 // La Function gère : génération, stockage mémoire, envoi Brevo, vérification
 
-const FUNCTION_URL = '/.netlify/functions/send-email';
+// Sur Capacitor (APK), window.location.origin = "capacitor://localhost"
+// → le chemin relatif /.netlify ne fonctionne pas → URL absolue nécessaire
+// brumerie.com est le domaine custom pointant vers Netlify
+const PROD_BASE = 'https://brumerie.com';
+const isCapacitor = typeof (window as any).Capacitor !== 'undefined'
+  || window.location.protocol === 'capacitor:';
+const FUNCTION_URL = isCapacitor
+  ? `${PROD_BASE}/.netlify/functions/send-email`
+  : '/.netlify/functions/send-email';
 
 // ── Demander l'envoi d'un OTP ──────────────────────────────────
 // Retourne { success: true } ou { devCode: string } si Function non déployée

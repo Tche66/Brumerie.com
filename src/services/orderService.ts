@@ -105,6 +105,60 @@ export async function submitProof(
   });
 }
 
+// ── COD : Vendeur confirme qu'il est prêt à livrer ────────────
+export async function confirmCODReady(orderId: string): Promise<void> {
+  const snap = await getDoc(doc(ordersCol, orderId));
+  if (!snap.exists()) return;
+  const order = { id: snap.id, ...snap.data() } as Order;
+
+  await updateDoc(doc(ordersCol, orderId), {
+    status: 'cod_confirmed' as OrderStatus,
+    codReadyAt: serverTimestamp(),
+  });
+
+  await notifyBoth({
+    sellerId: order.sellerId,
+    sellerMsg: {
+      title: `📦 Livraison en cours`,
+      body: `Vous avez confirmé la mise en livraison de "${order.productTitle}". Attendez la confirmation de réception.`,
+      convData: { orderId, productId: order.productId },
+    },
+    buyerId: order.buyerId,
+    buyerMsg: {
+      title: `🚚 Votre commande arrive !`,
+      body: `${order.sellerName} a confirmé l'envoi de "${order.productTitle}". Confirmez la réception et payez à la livraison.`,
+      convData: { orderId, productId: order.productId },
+    },
+  });
+}
+
+// ── COD : Acheteur confirme réception + paiement effectué ─────
+export async function confirmCODDelivered(orderId: string): Promise<void> {
+  const snap = await getDoc(doc(ordersCol, orderId));
+  if (!snap.exists()) return;
+  const order = { id: snap.id, ...snap.data() } as Order;
+
+  await updateDoc(doc(ordersCol, orderId), {
+    status: 'delivered' as OrderStatus,
+    deliveredAt: serverTimestamp(),
+  });
+
+  await notifyBoth({
+    sellerId: order.sellerId,
+    sellerMsg: {
+      title: `✅ Paiement encaissé !`,
+      body: `${order.buyerName} a confirmé avoir reçu et payé "${order.productTitle}". Transaction terminée ✓`,
+      convData: { orderId, productId: order.productId },
+    },
+    buyerId: order.buyerId,
+    buyerMsg: {
+      title: `🎉 Merci pour votre achat !`,
+      body: `Transaction terminée. Pensez à noter ${order.sellerName} !`,
+      convData: { orderId, productId: order.productId },
+    },
+  });
+}
+
 // ── Vendeur confirme réception ─────────────────────────────
 export async function confirmPaymentReceived(orderId: string): Promise<void> {
   const snap = await getDoc(doc(ordersCol, orderId));
