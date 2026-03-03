@@ -19,37 +19,52 @@ jobs:
         run: npm install
 
       - name: Build web app
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
         run: npm run build
-
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
-
-      - name: Add Android
-        run: npx cap add android || true
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Setup keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/brumerie.keystore
-
-      - name: Grant permissions
-        run: chmod +x android/gradlew
-
-      - name: Build APK
-        working-directory: android
-        run: ./gradlew assembleRelease
-
-      - name: Sign APK
+      # ✅ CRUCIAL : copier les icônes APRÈS cap sync (qui les écrase)
+      - name: Apply Brumerie icons
         run: |
-          TOOLS=$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)
-          $ANDROID_SDK_ROOT/build-tools/$TOOLS/apksigner sign \
-            --ks android/app/brumerie.keystore \
-            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
-            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            --out brumerie-android.apk \
-            android/app/build/outputs/apk/release/app-release-unsigned.apk
+          for folder in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            cp brumerie-icons/$folder/ic_launcher.png android/app/src/main/res/$folder/ic_launcher.png
+            cp brumerie-icons/$folder/ic_launcher_round.png android/app/src/main/res/$folder/ic_launcher_round.png
+          done
+          echo "✅ Icônes Brumerie appliquées"
+
+      - name: Generate keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore android/app/brumerie.keystore \
+            -alias ${{ secrets.KEY_ALIAS }} \
+            -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Brumerie,O=Brumerie CI,C=CI" \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}"
+
+      - name: Build signed APK
+        working-directory: android
+        env:
+          KEYSTORE_PATH: brumerie.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk brumerie-android.apk
 
       - uses: actions/upload-artifact@v4
         with:
